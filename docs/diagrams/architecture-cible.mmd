@@ -1,0 +1,49 @@
+%% MédiLabo Solutions — Architecture cible (microservices)
+%% Légende des relations :
+%%   ──▶  appel HTTP/REST (synchrone)
+%%   ⋯▶  appel REST interne service-à-service
+%%   ══▶  accès base de données (driver natif)
+
+flowchart TB
+    FE["🖥️ Frontend<br/><i>UI sobre, commune aux 3 sprints</i>"]
+
+    GW{{"🚪 Gateway<br/><b>Spring Cloud Gateway</b><br/>+ Spring Security (auth)"}}
+
+    subgraph MS["Microservices métier"]
+        direction LR
+        PS["📇 patient-service<br/><i>Spring Boot · JPA</i>"]
+        NS["📝 notes-service<br/><i>Spring Boot · Spring Data Mongo</i>"]
+        RS["🧮 risk-service<br/><i>Spring Boot · calcul risque</i>"]
+    end
+
+    SQL[("🗄️ MySQL / PostgreSQL<br/><b>Relationnelle — 3NF</b><br/><i>patients, adresses</i>")]
+    MONGO[("🍃 MongoDB<br/><b>NoSQL documents</b><br/><i>notes praticien</i>")]
+
+    %% Front → Gateway
+    FE  -- "HTTP REST<br/>(Basic Auth / JWT)" --> GW
+
+    %% Gateway → microservices (routage)
+    GW  -- "route /patients/**" --> PS
+    GW  -- "route /notes/**"    --> NS
+    GW  -- "route /risk/**"     --> RS
+
+    %% Risk service agrège depuis les 2 autres services
+    RS  -. "REST interne<br/>GET infos patient" .-> PS
+    RS  -. "REST interne<br/>GET notes du patient" .-> NS
+
+    %% Accès aux bases (driver)
+    PS  == "JPA / Hibernate" ==> SQL
+    NS  == "Spring Data MongoDB" ==> MONGO
+
+    %% Styling
+    classDef ms      fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1;
+    classDef gw      fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#e65100;
+    classDef front   fill:#f3e5f5,stroke:#6a1b9a,stroke-width:1px,color:#4a148c;
+    classDef dbsql   fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef dbnosql fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#f57f17;
+
+    class FE front;
+    class GW gw;
+    class PS,NS,RS ms;
+    class SQL dbsql;
+    class MONGO dbnosql;

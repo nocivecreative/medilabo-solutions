@@ -1,0 +1,51 @@
+# ============================================================
+# Cross-service .gitignore (monorepo root)
+# Per-service .gitignore in each module handles module-specific paths.
+# ============================================================
+
+# --- Build outputs (catch-all across modules) ---
+**/target/
+**/build/
+**/dist/
+**/out/
+
+# --- Node / frontend (à venir) ---
+**/node_modules/
+**/.angular/
+**/coverage/
+
+# --- Environment variables ---
+.env
+.env.local
+.env.*.local
+
+# --- IDE — JetBrains ---
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- IDE — VS Code (selective) ---
+# On commit le workspace + les configs partageables.
+# On ignore les configs personnelles (lancement, debug perso).
+.vscode/launch.json
+.vscode/.ropeproject/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# --- Logs ---
+*.log
+**/logs/
+
+# --- Misc ---
+*.pid
+*.seed
+*.pid.lock
+
+# --- Docker volumes (si bind mount local) ---
+docker-volumes/

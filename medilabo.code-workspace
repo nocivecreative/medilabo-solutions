@@ -1,0 +1,30 @@
+{
+  "folders": [
+    { "path": "gateway", "name": "🚪 gateway" },
+    { "path": "patient", "name": "📇 patient" },
+    { "path": "notes", "name": "📝 notes" },
+    { "path": "risk", "name": "🧮 risk" },
+    { "path": ".", "name": "🏠 ROOT (docker-compose, README, docs)" }
+  ],
+  "settings": {
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "files.exclude": {
+      "**/target": true,
+      "**/.idea": true,
+      "**/*.iml": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "vscjava.vscode-java-pack",
+      "vscjava.vscode-spring-boot-dashboard",
+      "pivotal.vscode-spring-boot",
+      "redhat.vscode-xml",
+      "redhat.vscode-yaml",
+      "ms-azuretools.vscode-docker",
+      "angular.ng-template",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}
