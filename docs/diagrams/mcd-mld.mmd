@@ -1,22 +1,15 @@
 erDiagram
 
     PATIENT       ||--o{ NOTE          : "possède (lien logique cross-DB)"
-    PATIENT       }o--o| CODE_POSTAL   : "domicilié à"
 
     PATIENT {
         bigint       id              PK "auto-incrément"
-        varchar(50)  prenom            "NOT NULL"
-        varchar(50)  nom               "NOT NULL"
+        varchar(100)  prenom            "NOT NULL"
+        varchar(100)  nom               "NOT NULL"
         date         date_naissance    "NOT NULL"
         char(1)      genre             "NOT NULL — M ou F"
         varchar(20)  telephone         "nullable"
-        varchar(100) adresse_ligne     "nullable"
-        varchar(10)  code_postal       FK "nullable, ref CODE_POSTAL"
-    }
-
-    CODE_POSTAL {
-        varchar(10) code_postal       PK "ex. 75001"
-        varchar(50) ville              "NOT NULL — déduite du CP"
+        varchar(255) adresse           "nullable"
     }
 
     NOTE {
