@@ -1,0 +1,16 @@
+# Profil de test : base d'auth en H2 reactif (en memoire), pas de MySQL requis.
+# Le schema app_user est cree par spring.sql.init ; l'utilisateur praticien est
+# ensuite amorce par AuthUserSeeder avec les memes identifiants par defaut.
+spring:
+  r2dbc:
+    url: r2dbc:h2:mem:///medilabo_auth;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-h2.sql
+
+# Isolation des tests : la route patient pointe vers un port ferme, pour ne jamais
+# dependre d'un vrai service eventuellement lance en local sur 8081.
+PATIENT_SERVICE_URI: http://localhost:59999

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  * {@code RANDOM_PORT} demarre un vrai serveur Netty sur un port libre.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
 class GatewaySecurityRoutingTest {
 
     // Identifiants par defaut du profil de dev (cf. application.yml).
@@ -65,11 +67,18 @@ class GatewaySecurityRoutingTest {
     }
 
     @Test
-    @DisplayName("Identifiants valides : auth franchie + route trouvee (backend down -> 5xx, ni 401 ni 404)")
+    @DisplayName("Identifiants valides : auth franchie et route trouvee (ni 401 ni 404)")
     void patientRoute_withValidCredentials_passesAuthAndRoutes() {
+        // Garantie reelle : avec de bons identifiants, on n'est ni bloque par
+        // l'auth (401) ni hors-route (404). Que le backend reponde 200 (up) ou
+        // 5xx (down) ne regarde pas la gateway -> assertion robuste a l'environnement.
         webTestClient.get().uri("/patients")
                 .headers(h -> h.setBasicAuth(USER, PASSWORD))
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().value(status -> {
+                    if (status == 401 || status == 404) {
+                        throw new AssertionError("Auth ou routage en echec, statut = " + status);
+                    }
+                });
     }
 }

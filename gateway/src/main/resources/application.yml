@@ -6,6 +6,13 @@ server:
 spring:
   application:
     name: gateway
+  # Base d'authentification dediee (schema medilabo_auth, distinct de patient).
+  # Acces R2DBC (non-bloquant, obligatoire sur une gateway reactive).
+  # En Docker : surcharger AUTH_DB_URL vers le service mysql.
+  r2dbc:
+    url: ${AUTH_DB_URL:r2dbc:mysql://localhost:3307/medilabo_auth?sslMode=DISABLED}
+    username: ${AUTH_DB_USER:medilabo}
+    password: ${AUTH_DB_PASSWORD:medilabo}
   cloud:
     gateway:
       server:
@@ -20,8 +27,9 @@ spring:
               predicates:
                 - Path=/patients/**
 
-# Authentification centralisee (cf. ADR-03 : Basic Auth + InMemoryUserDetailsManager).
-# Identifiants surchargeables par variables d'environnement en Docker/prod.
+# Identifiants de l'unique utilisateur (praticien), amorce au demarrage dans la
+# base d'auth s'il est absent (cf. ADR-03 v4). Surchargeables par variables
+# d'environnement en Docker/prod ; aucun secret en dur dans le code.
 medilabo:
   security:
     username: ${GATEWAY_USER:praticien}

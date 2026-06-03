@@ -1,14 +1,10 @@
 package com.medilabo.gateway.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -17,19 +13,16 @@ import org.springframework.security.web.server.context.NoOpServerSecurityContext
 /**
  * Securite de la gateway : authentification centralisee pour toute la stack.
  *
- * <p>Choix arretes (ADR-03) : HTTP Basic Auth + utilisateur en memoire, sans
- * inscription ni gestion fine de roles. La gateway etant reactive (WebFlux/Netty),
- * on utilise {@link EnableWebFluxSecurity} et non {@code @EnableWebSecurity}.
+ * <p>Choix (ADR-03 v4) : HTTP Basic Auth, utilisateurs stockes dans une base
+ * d'auth dediee (medilabo_auth), sans inscription ni gestion fine de roles. La
+ * gateway etant reactive (WebFlux/Netty), on utilise {@link EnableWebFluxSecurity}
+ * et non {@code @EnableWebSecurity}. Le chargement des utilisateurs est assure
+ * par {@code DatabaseUserDetailsService} (bean {@code ReactiveUserDetailsService})
+ * que Spring Security cable automatiquement avec le {@link #passwordEncoder()}.
  */
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
-
-    @Value("${medilabo.security.username}")
-    private String username;
-
-    @Value("${medilabo.security.password}")
-    private String password;
 
     /**
      * Chaine de filtres reactive : tout est protege sauf la sonde de sante.
@@ -50,19 +43,11 @@ public class SecurityConfig {
     }
 
     /**
-     * Unique utilisateur (praticien) charge en memoire au demarrage.
-     * Identifiants externalises (variables d'environnement) ; mot de passe
-     * hashe avec BCrypt via le {@link #passwordEncoder() DelegatingPasswordEncoder}.
+     * Encode/verifie les mots de passe. BCrypt par defaut, avec prefixe d'algo
+     * ({bcrypt}...) pour permettre une migration d'algorithme sans casser
+     * les hash existants. Utilise a la fois pour seeder l'utilisateur et pour
+     * verifier les credentials a chaque requete.
      */
-    @Bean
-    MapReactiveUserDetailsService userDetailsService(PasswordEncoder encoder) {
-        UserDetails praticien = User.withUsername(username)
-                .password(encoder.encode(password))
-                .roles("USER")
-                .build();
-        return new MapReactiveUserDetailsService(praticien);
-    }
-
     @Bean
     PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
