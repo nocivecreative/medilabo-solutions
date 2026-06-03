@@ -1,0 +1,43 @@
+server:
+  # Seul port public de la stack : la gateway est l'unique point d'entree.
+  # Les microservices metier ecoutent sur des ports distincts (patient=8081, ...).
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  # Base d'authentification dediee (schema medilabo_auth, distinct de patient).
+  # Acces R2DBC (non-bloquant, obligatoire sur une gateway reactive).
+  # En Docker : surcharger AUTH_DB_URL vers le service mysql.
+  r2dbc:
+    url: ${AUTH_DB_URL:r2dbc:mysql://localhost:3307/medilabo_auth?sslMode=DISABLED}
+    username: ${AUTH_DB_USER:medilabo}
+    password: ${AUTH_DB_PASSWORD:medilabo}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Sprint 1 : routage vers patient-service.
+            # En Docker, surcharger PATIENT_SERVICE_URI=http://patient:8081
+            # (nom DNS du service docker-compose). Pas de StripPrefix :
+            # le controller patient expose deja /patients.
+            - id: patient
+              uri: ${PATIENT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/patients/**
+
+# Identifiants de l'unique utilisateur (praticien), amorce au demarrage dans la
+# base d'auth s'il est absent (cf. ADR-03 v4). Surchargeables par variables
+# d'environnement en Docker/prod ; aucun secret en dur dans le code.
+medilabo:
+  security:
+    username: ${GATEWAY_USER:praticien}
+    password: ${GATEWAY_PASSWORD:medilabo}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # On n'expose que /health (sonde orchestrateur), pas /env ni /configprops.
+        include: health
