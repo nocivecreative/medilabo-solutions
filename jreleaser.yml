@@ -1,0 +1,27 @@
+# Release automation native JVM (cf. ADR-09).
+# Config au niveau du repo (monorepo sans POM parent) : pilotee par les tags de
+# sprint vX.Y.Z-sprintN. La version est injectee par la GitHub Action via
+# JRELEASER_PROJECT_VERSION (le tag sans son prefixe 'v').
+project:
+  name: medilabo-solutions
+  description: Depistage du risque de diabete de type 2 - architecture microservices
+  copyright: 2026 MedilaboSolutions
+  links:
+    homepage: https://github.com/nocivecreative/medilabo-solutions
+
+release:
+  github:
+    owner: nocivecreative
+    name: medilabo-solutions
+    # Le tag est deja pousse a la main : JReleaser cree la Release dessus.
+    tagName: 'v{{projectVersion}}'
+    # Les tags de sprint sont des jalons intermediaires -> marques pre-release.
+    prerelease:
+      pattern: .*-sprint.*
+    overwrite: true
+    changelog:
+      formatted: ALWAYS
+      # Genere les notes en regroupant les commits par type Conventional Commits.
+      preset: conventional-commits
+      contributors:
+        enabled: false

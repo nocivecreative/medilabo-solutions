@@ -1,0 +1,41 @@
+name: release
+
+# Declenche sur push d'un tag de sprint, ou manuellement (utile pour (re)jouer
+# un tag deja pousse, comme v0.1.0-sprint1).
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag a releaser (ex: v0.1.0-sprint1)"
+        required: true
+
+permissions:
+  contents: write  # necessaire pour creer la GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (historique complet pour le changelog)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Derive version from tag
+        id: ver
+        # Retire le prefixe 'v' : v0.1.0-sprint1 -> 0.1.0-sprint1
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: JReleaser
+        uses: jreleaser/release-action@v2
+        with:
+          arguments: release
+        env:
+          JRELEASER_PROJECT_VERSION: ${{ steps.ver.outputs.version }}
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
