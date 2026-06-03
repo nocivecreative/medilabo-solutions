@@ -88,7 +88,7 @@ code medilabo.code-workspace
 | Sécurité                        | **Spring Security** (HTTP Basic Auth + `InMemoryUserDetailsManager`) | aligné Boot 4              |
 | BDD relationnelle               | **MySQL Community**                                                  | **8.4 LTS**                |
 | BDD NoSQL                       | **MongoDB Community**                                                | 7+                         |
-| Versionnage schéma SQL          | **Flyway**                                                           | 10.x                       |
+| Schéma SQL                      | DDL versionné dans `patient/src/main/resources/db/*.sql`             | —                          |
 | Client HTTP inter-microservices | **`RestClient`** (Spring 6.1+, impératif)                            | aligné Boot 4              |
 | Build                           | **Maven Wrapper** (`./mvnw`)                                         | 3.9+                       |
 | Frontend                        | **Angular standalone**                                               | 20+ _(à venir)_            |
@@ -182,7 +182,7 @@ flowchart TB
 ```
 medilabo-solutions/                  ← monorepo Git
 ├── gateway/                         Spring Cloud Gateway + Spring Security
-├── patient/                         CRUD patients (MySQL 3NF + Flyway)
+├── patient/                         CRUD patients (MySQL — table unique)
 ├── notes/                           Historique notes praticien (MongoDB)
 ├── risk/                            Calcul du niveau de risque diabète
 ├── frontend/                        SPA Angular (à venir)
@@ -207,7 +207,7 @@ Premières mesures appliquées dès le sprint 0 :
 
 - ✅ **Images Docker multi-stage** `eclipse-temurin:25-jre-alpine` (~120 Mo par service vs ~470 Mo avec JDK + Maven)
 - ✅ **DevTools et Lombok exclus** des JAR de production via `spring-boot-maven-plugin`
-- ✅ **Hibernate `ddl-auto: validate`** + Flyway comme autorité unique sur le schéma (pas de DDL automatique)
+- ✅ **Hibernate `ddl-auto: validate`** + DDL versionné à la main dans `patient/src/main/resources/db/` (pas de DDL automatique, pas de Flyway — YAGNI vu le périmètre)
 - 🔜 **Pagination obligatoire** (`Pageable`) sur les listes patients / notes
 - 🔜 **Compression GZIP** côté gateway
 - 🔜 **Lazy loading** des routes Angular
