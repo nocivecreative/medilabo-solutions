@@ -27,13 +27,8 @@ spring:
               predicates:
                 - Path=/patients/**
 
-# Identifiants de l'unique utilisateur (praticien), amorce au demarrage dans la
-# base d'auth s'il est absent (cf. ADR-03 v4). Surchargeables par variables
-# d'environnement en Docker/prod ; aucun secret en dur dans le code.
-medilabo:
-  security:
-    username: ${GATEWAY_USER:praticien}
-    password: ${GATEWAY_PASSWORD:medilabo}
+# Les utilisateurs sont geres directement en base (medilabo_auth) : la gateway
+# est un pur lecteur, aucun amorcage cote application (cf. ADR-03 v5).
 
 management:
   endpoints:

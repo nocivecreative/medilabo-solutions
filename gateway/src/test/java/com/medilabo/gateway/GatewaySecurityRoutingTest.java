@@ -3,10 +3,15 @@ package com.medilabo.gateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
+
+import com.medilabo.gateway.security.AppUser;
+import com.medilabo.gateway.security.AppUserRepository;
 
 /**
  * Verifie les deux responsabilites de la gateway pour le sprint 1 :
@@ -24,7 +29,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @ActiveProfiles("test")
 class GatewaySecurityRoutingTest {
 
-    // Identifiants par defaut du profil de dev (cf. application.yml).
+    // Utilisateur de test, insere dans la base d'auth par la fixture ci-dessous.
     private static final String USER = "praticien";
     private static final String PASSWORD = "medilabo";
 
@@ -32,10 +37,22 @@ class GatewaySecurityRoutingTest {
     @Value("${local.server.port}")
     private int port;
 
+    @Autowired
+    private AppUserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private WebTestClient webTestClient;
 
     @BeforeEach
     void setUp() {
+        // La gateway ne seede plus aucun utilisateur (DB = source de verite) :
+        // on insere le praticien de test directement, encode comme en prod.
+        userRepository.findByUsername(USER)
+                .switchIfEmpty(userRepository.save(
+                        new AppUser(null, USER, passwordEncoder.encode(PASSWORD), true)))
+                .block();
         this.webTestClient = WebTestClient.bindToServer()
                 .baseUrl("http://localhost:" + port)
                 .build();
