@@ -20,6 +20,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import com.medilabo.patient.dto.PatientDTO;
 import com.medilabo.patient.exceptions.PatientNotFoundException;
@@ -64,28 +68,31 @@ class PatientServiceTest {
     }
 
     @Nested
-    @DisplayName("getAllPatients")
-    class GetAllPatients {
+    @DisplayName("getPatients")
+    class GetPatients {
 
         @Test
-        @DisplayName("Should return an empty list when no patient exists")
-        void shouldReturnEmptyListWhenNoPatient() {
-            when(patientRepository.findAll()).thenReturn(List.of());
+        @DisplayName("Should return an empty page when no patient exists")
+        void shouldReturnEmptyPageWhenNoPatient() {
+            Pageable pageable = PageRequest.of(0, 20);
+            when(patientRepository.findAll(pageable)).thenReturn(Page.empty(pageable));
 
-            List<PatientDTO> result = patientService.getAllPatients();
+            Page<PatientDTO> result = patientService.getPatients(pageable);
 
             assertThat(result).isEmpty();
-            verify(patientRepository).findAll();
+            verify(patientRepository).findAll(pageable);
         }
 
         @Test
-        @DisplayName("Should map every entity to its DTO")
+        @DisplayName("Should map every entity of the page to its DTO")
         void shouldMapEntitiesToDtos() {
-            when(patientRepository.findAll()).thenReturn(List.of(existingPatient));
+            Pageable pageable = PageRequest.of(0, 20);
+            when(patientRepository.findAll(pageable))
+                    .thenReturn(new PageImpl<>(List.of(existingPatient), pageable, 1));
 
-            List<PatientDTO> result = patientService.getAllPatients();
+            Page<PatientDTO> result = patientService.getPatients(pageable);
 
-            assertThat(result)
+            assertThat(result.getContent())
                     .singleElement()
                     .extracting(PatientDTO::getId, PatientDTO::getPrenom, PatientDTO::getNom,
                             PatientDTO::getDateNaissance, PatientDTO::getGenre,

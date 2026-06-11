@@ -1,6 +1,7 @@
 package com.medilabo.patient.services;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.medilabo.patient.dto.PatientDTO;
 
@@ -9,7 +10,7 @@ import com.medilabo.patient.dto.PatientDTO;
  */
 public interface IPatientService {
 
-    List<PatientDTO> getAllPatients();
+    Page<PatientDTO> getPatients(Pageable pageable);
 
     PatientDTO getPatientById(Long id);
 
