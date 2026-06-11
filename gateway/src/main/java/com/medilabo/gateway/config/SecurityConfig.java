@@ -45,8 +45,8 @@ public class SecurityConfig {
     /**
      * Encode/verifie les mots de passe. BCrypt par defaut, avec prefixe d'algo
      * ({bcrypt}...) pour permettre une migration d'algorithme sans casser
-     * les hash existants. Utilise a la fois pour seeder l'utilisateur et pour
-     * verifier les credentials a chaque requete.
+     * les hash existants. Le hash stocke en base (cf. 02_insert_app_user.sql)
+     * porte ce prefixe ; cet encoder le verifie a chaque requete.
      */
     @Bean
     PasswordEncoder passwordEncoder() {
