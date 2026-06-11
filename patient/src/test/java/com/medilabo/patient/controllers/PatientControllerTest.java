@@ -1,7 +1,9 @@
 package com.medilabo.patient.controllers;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,10 +17,12 @@ import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,6 +69,26 @@ class PatientControllerTest {
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].nom").value("Dupont"))
                 .andExpect(jsonPath("$.page.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /patients without params applies the default paging (size 10, sorted by nom ASC)")
+    void shouldApplyDefaultPageable() throws Exception {
+        when(patientService.getPatients(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(validDto())));
+
+        mockMvc.perform(get("/patients"))
+                .andExpect(status().isOk());
+
+        // Le Pageable réellement transmis au service doit refléter @PageableDefault.
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(patientService).getPatients(captor.capture());
+        Pageable used = captor.getValue();
+        assertThat(used.getPageSize()).isEqualTo(10);
+        assertThat(used.getSort().getOrderFor("nom"))
+                .isNotNull()
+                .extracting(Sort.Order::getDirection)
+                .isEqualTo(Sort.Direction.ASC);
     }
 
     @Test
