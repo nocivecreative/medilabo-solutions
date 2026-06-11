@@ -1,10 +1,14 @@
 package com.medilabo.patient.controllers;
 
 import java.net.URI;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,14 +35,21 @@ public class PatientController {
     private final IPatientService patientService;
 
     /**
-     * Liste tous les patients.
+     * Liste paginée des patients.
+     * Paramètres de requête : ?page=0&size=20&sort=nom,asc (résolus par Spring Data).
+     * La réponse est un {@link PagedModel} : format JSON stable ({@code content} + bloc
+     * {@code page}), recommandé plutôt que la sérialisation directe d'une {@code Page}.
      */
     @GetMapping
-    public ResponseEntity<List<PatientDTO>> getAllPatients() {
-        logger.info("[CALL] GET /patients");
-        List<PatientDTO> patients = patientService.getAllPatients();
-        logger.info("[RESPONSE] GET /patients -> {} patient(s)", patients.size());
-        return ResponseEntity.ok(patients);
+    public ResponseEntity<PagedModel<PatientDTO>> getPatients(
+            @PageableDefault(size = 10, sort = "nom", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+        logger.info("[CALL] GET /patients - page={} size={} sort=[{}]",
+                pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<PatientDTO> page = patientService.getPatients(pageable);
+        logger.info("[RESPONSE] GET /patients -> {} patient(s) sur {} au total",
+                page.getNumberOfElements(), page.getTotalElements());
+        return ResponseEntity.ok(new PagedModel<>(page));
     }
 
     /**

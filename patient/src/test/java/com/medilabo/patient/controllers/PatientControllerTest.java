@@ -17,6 +17,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -53,14 +55,16 @@ class PatientControllerTest {
     }
 
     @Test
-    @DisplayName("GET /patients should return 200 with the patient list")
+    @DisplayName("GET /patients should return 200 with a paged patient list")
     void shouldListPatients() throws Exception {
-        when(patientService.getAllPatients()).thenReturn(List.of(validDto()));
+        when(patientService.getPatients(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(validDto())));
 
         mockMvc.perform(get("/patients"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].nom").value("Dupont"));
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].nom").value("Dupont"))
+                .andExpect(jsonPath("$.page.totalElements").value(1));
     }
 
     @Test
