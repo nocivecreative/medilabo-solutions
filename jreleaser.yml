@@ -15,9 +15,12 @@ release:
     name: medilabo-solutions
     # Le tag est deja pousse a la main : JReleaser cree la Release dessus.
     tagName: 'v{{projectVersion}}'
-    # Les tags de sprint sont des jalons intermediaires -> marques pre-release.
+    # Critere SemVer : tout tag portant un identifiant de pre-release (le segment
+    # apres le '-', cf. SemVer §9) est un jalon intermediaire -> marque pre-release.
+    # Couvre bootstrap, sprint1..N, rc, etc. sans enumeration a maintenir.
+    # Seule la livraison finale 'v1.0.0' (sans suffixe) sortira en release stable.
     prerelease:
-      pattern: .*-sprint.*
+      pattern: .*-.*
     overwrite: true
     changelog:
       formatted: ALWAYS
