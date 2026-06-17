@@ -1,0 +1,18 @@
+# Normalisation des fins de ligne (monorepo multi-OS).
+# Par defaut : Git auto-detecte le texte et normalise en LF dans le depot.
+* text=auto
+
+# --- Fichiers consommes dans des conteneurs Linux / shells : LF OBLIGATOIRE ---
+# Un CRLF sur ces fichiers casse au runtime sur une machine qui clone a froid
+# (jury, CI Linux), independamment de l'OS du dev.
+*.sh         text eol=lf
+*.sql        text eol=lf
+Dockerfile   text eol=lf
+*.Dockerfile text eol=lf
+mvnw         text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+
+# --- Scripts Windows : CRLF ---
+*.cmd        text eol=crlf
+*.bat        text eol=crlf
