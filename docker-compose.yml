@@ -1,0 +1,57 @@
+# Orchestration MédiLabo Solutions.
+# Phase 1 (en cours) : socle de persistance MySQL partage (schemas medilabo_patient + medilabo_auth).
+# Les services applicatifs (patient, gateway, frontend) seront ajoutes ensuite.
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: medilabo-mysql
+    environment:
+      # Cree le schema patient + l'utilisateur applicatif `medilabo` (grant auto sur CE schema).
+      # Le second schema (medilabo_auth) est cree + grante par les scripts d'init.
+      MYSQL_DATABASE: medilabo_patient
+      MYSQL_USER: medilabo
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      # Expose en 3307 cote hote : permet de valider patient/gateway lances en LOCAL
+      # (profil `local`, qui pointe deja sur localhost:3307) contre la base conteneurisee.
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Init centralise : execute UNE SEULE FOIS sur volume vide, en ordre lexical.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - medilabo-net
+    healthcheck:
+      # Sert au `depends_on: condition: service_healthy` des futurs services applicatifs :
+      # ils n'attendront pas que le conteneur demarre, mais que MySQL accepte les connexions.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  patient:
+    build: ./patient
+    image: medilabo/patient:dev
+    container_name: medilabo-patient
+    environment:
+      # Active le profil docker (datasource vers le service `mysql`, pas localhost).
+      SPRING_PROFILES_ACTIVE: docker
+      # Cablage du secret : meme valeur que DB_PASSWORD, sous le nom attendu par l'app.
+      SPRING_MEDILABO_PATIENT_DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        # N'attend pas que le conteneur demarre, mais que MySQL accepte les connexions.
+        condition: service_healthy
+    networks:
+      - medilabo-net
+    # Pas de `ports:` : service interne, joignable uniquement via la gateway (et le reseau Docker).
+
+volumes:
+  mysql-data:
+
+networks:
+  medilabo-net:
+    driver: bridge
