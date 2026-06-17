@@ -48,6 +48,37 @@ services:
     networks:
       - medilabo-net
     # Pas de `ports:` : service interne, joignable uniquement via la gateway (et le reseau Docker).
+    healthcheck:
+      # /actuator/health expose par patient -> la gateway attend qu'il soit PRET a router,
+      # pas seulement demarre. wget est fourni par busybox dans l'image alpine.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  gateway:
+    build: ./gateway
+    image: medilabo/gateway:dev
+    container_name: medilabo-gateway
+    environment:
+      # R2DBC vers le schema auth sur le NOM DE SERVICE `mysql` (port interne 3306).
+      # sslMode=PREFERRED : le driver R2DBC io.asyncer exige TLS pour le handshake
+      # caching_sha2_password (pas de allowPublicKeyRetrieval cote R2DBC) -> TLS = seule voie.
+      AUTH_DB_URL: r2dbc:mysql://mysql:3306/medilabo_auth?sslMode=PREFERRED
+      SPRING_MEDILABO_AUTH_DB_PASSWORD: ${DB_PASSWORD}
+      # Routage interne vers le service patient (nom de service + port interne 8081).
+      PATIENT_SERVICE_URI: http://patient:8081
+    ports:
+      # SEUL port applicatif publie a l'hote : point d'entree unique de la stack.
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      patient:
+        condition: service_healthy
+    networks:
+      - medilabo-net
 
 volumes:
   mysql-data:
