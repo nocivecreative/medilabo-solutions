@@ -19,7 +19,7 @@ spring:
     url: ${AUTH_DB_URL:r2dbc:mysql://localhost:3307/medilabo_auth?sslMode=PREFERRED}
     username: ${AUTH_DB_USER:medilabo}
     # Secret propre a la base auth, distinct de celui du patient.
-    password: ${SPRING_MEDILABO_AUTH_DB_PASSWORD:medilabo}
+    password: ${SPRING_MEDILABO_AUTH_DB_PASSWORD}
   cloud:
     gateway:
       server:

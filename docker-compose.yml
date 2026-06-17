@@ -1,0 +1,88 @@
+# Orchestration MédiLabo Solutions.
+# Phase 1 (en cours) : socle de persistance MySQL partage (schemas medilabo_patient + medilabo_auth).
+# Les services applicatifs (patient, gateway, frontend) seront ajoutes ensuite.
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: medilabo-mysql
+    environment:
+      # Cree le schema patient + l'utilisateur applicatif `medilabo` (grant auto sur CE schema).
+      # Le second schema (medilabo_auth) est cree + grante par les scripts d'init.
+      MYSQL_DATABASE: medilabo_patient
+      MYSQL_USER: medilabo
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      # Expose en 3307 cote hote : permet de valider patient/gateway lances en LOCAL
+      # (profil `local`, qui pointe deja sur localhost:3307) contre la base conteneurisee.
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Init centralise : execute UNE SEULE FOIS sur volume vide, en ordre lexical.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - medilabo-net
+    healthcheck:
+      # Sert au `depends_on: condition: service_healthy` des futurs services applicatifs :
+      # ils n'attendront pas que le conteneur demarre, mais que MySQL accepte les connexions.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  patient:
+    build: ./patient
+    image: medilabo/patient:dev
+    container_name: medilabo-patient
+    environment:
+      # Active le profil docker (datasource vers le service `mysql`, pas localhost).
+      SPRING_PROFILES_ACTIVE: docker
+      # Cablage du secret : meme valeur que DB_PASSWORD, sous le nom attendu par l'app.
+      SPRING_MEDILABO_PATIENT_DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mysql:
+        # N'attend pas que le conteneur demarre, mais que MySQL accepte les connexions.
+        condition: service_healthy
+    networks:
+      - medilabo-net
+    # Pas de `ports:` : service interne, joignable uniquement via la gateway (et le reseau Docker).
+    healthcheck:
+      # /actuator/health expose par patient -> la gateway attend qu'il soit PRET a router,
+      # pas seulement demarre. wget est fourni par busybox dans l'image alpine.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  gateway:
+    build: ./gateway
+    image: medilabo/gateway:dev
+    container_name: medilabo-gateway
+    environment:
+      # R2DBC vers le schema auth sur le NOM DE SERVICE `mysql` (port interne 3306).
+      # sslMode=PREFERRED : le driver R2DBC io.asyncer exige TLS pour le handshake
+      # caching_sha2_password (pas de allowPublicKeyRetrieval cote R2DBC) -> TLS = seule voie.
+      AUTH_DB_URL: r2dbc:mysql://mysql:3306/medilabo_auth?sslMode=PREFERRED
+      SPRING_MEDILABO_AUTH_DB_PASSWORD: ${DB_PASSWORD}
+      # Routage interne vers le service patient (nom de service + port interne 8081).
+      PATIENT_SERVICE_URI: http://patient:8081
+    ports:
+      # SEUL port applicatif publie a l'hote : point d'entree unique de la stack.
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      patient:
+        condition: service_healthy
+    networks:
+      - medilabo-net
+
+volumes:
+  mysql-data:
+
+networks:
+  medilabo-net:
+    driver: bridge
