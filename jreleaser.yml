@@ -22,6 +22,11 @@ release:
     prerelease:
       pattern: .*-.*
     overwrite: true
+    # On n'utilise pas de milestones. Sans ca, JReleaser tente de fermer un milestone
+    # nomme comme la version -> appel API issues/milestones qui exige `issues: write`
+    # (absent du token, volontairement : moindre privilege) -> 403 Forbidden.
+    milestone:
+      close: false
     changelog:
       formatted: ALWAYS
       # Genere les notes en regroupant les commits par type Conventional Commits.
