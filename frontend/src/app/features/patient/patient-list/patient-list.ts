@@ -2,13 +2,15 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
 
 import { PatientService } from '../../../core/api/patient.service';
 import { Patient } from '../../../core/api/patient.model';
 
 @Component({
   selector: 'app-patient-list',
-  imports: [MatTableModule, MatPaginatorModule, MatProgressBarModule],
+  imports: [MatTableModule, MatPaginatorModule, MatProgressBarModule, MatButtonModule, RouterLink],
   templateUrl: './patient-list.html',
   styleUrl: './patient-list.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

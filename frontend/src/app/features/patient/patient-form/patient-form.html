@@ -1,0 +1,47 @@
+<h1>{{ patientId() === null ? 'Nouveau patient' : 'Modifier le patient' }}</h1>
+
+<form [formGroup]="form" (ngSubmit)="submit()" class="patient-form">
+  <mat-form-field>
+    <mat-label>Prénom</mat-label>
+    <input matInput formControlName="prenom" />
+    <mat-error>Prénom requis</mat-error>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Nom</mat-label>
+    <input matInput formControlName="nom" />
+    <mat-error>Nom requis</mat-error>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Date de naissance</mat-label>
+    <input matInput type="date" formControlName="dateNaissance" />
+    <mat-error>Date de naissance requise</mat-error>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Genre</mat-label>
+    <mat-select formControlName="genre">
+      <mat-option value="M">M</mat-option>
+      <mat-option value="F">F</mat-option>
+    </mat-select>
+    <mat-error>Genre requis</mat-error>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Téléphone</mat-label>
+    <input matInput formControlName="telephone" />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Adresse</mat-label>
+    <input matInput formControlName="adresse" />
+  </mat-form-field>
+
+  <div class="actions">
+    <a mat-button routerLink="/patients">Annuler</a>
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+      Enregistrer
+    </button>
+  </div>
+</form>

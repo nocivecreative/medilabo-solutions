@@ -1,4 +1,7 @@
-<h1>Patients</h1>
+<div class="list-header">
+  <h1>Patients</h1>
+  <a mat-flat-button color="primary" routerLink="/patients/new">Ajouter un patient</a>
+</div>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate" />
@@ -31,7 +34,8 @@
   </ng-container>
 
   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-  <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns"
+      [routerLink]="['/patients', row.id]" class="clickable-row"></tr>
 </table>
 
 <mat-paginator
