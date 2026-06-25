@@ -1,0 +1,7 @@
+# Allège le contexte de build envoyé au démon Docker (build plus rapide, image plus saine).
+node_modules/
+dist/
+.angular/
+.git/
+.vscode/
+*.log
