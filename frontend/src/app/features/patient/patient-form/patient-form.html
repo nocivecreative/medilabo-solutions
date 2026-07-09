@@ -45,3 +45,7 @@
     </button>
   </div>
 </form>
+
+@if (patientId() !== null) {
+  <app-patient-notes [patId]="patientId()!" />
+}

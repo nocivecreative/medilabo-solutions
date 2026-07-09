@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 
 import { PatientService } from '../../../core/api/patient.service';
 import { Patient } from '../../../core/api/patient.model';
+import { PatientNotes } from '../patient-notes/patient-notes';
 
 @Component({
   selector: 'app-patient-form',
@@ -18,6 +19,7 @@ import { Patient } from '../../../core/api/patient.model';
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    PatientNotes,
   ],
   templateUrl: './patient-form.html',
   styleUrl: './patient-form.css',

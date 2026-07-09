@@ -1,8 +1,13 @@
+h1 {
+  padding: 0 8rem;
+}
+
 .patient-form {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   max-width: 480px;
+  margin: 0 auto; /* centre le formulaire horizontalement dans la zone de contenu */
 }
 
 .actions {

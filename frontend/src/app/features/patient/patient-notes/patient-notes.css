@@ -1,0 +1,44 @@
+:host {
+  display: block;
+}
+
+.notes {
+  margin-top: 2rem;
+}
+
+.notes h2 {
+  padding: 0 8rem;
+}
+
+/* Titre "Historique des notes" laisse a gauche ; seul le corps (historique + ajout)
+   est centre horizontalement, comme le formulaire patient. */
+.notes-body {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.note-card {
+  margin-bottom: 0.75rem;
+  white-space: pre-wrap; /* preserve les retours a la ligne saisis par le praticien */
+}
+
+.empty {
+  color: rgba(0, 0, 0, 0.6);
+  font-style: italic;
+}
+
+.add-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.add-field {
+  width: 100%;
+}
+
+.error {
+  color: var(--mat-sys-error, #b3261e);
+  margin: 0;
+}

@@ -2,7 +2,7 @@ package com.medilabo.gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -38,7 +38,15 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/actuator/health").permitAll()
                         .anyExchange().authenticated())
-                .httpBasic(Customizer.withDefaults())
+                // Basic Auth SANS challenge WWW-Authenticate : sur un 401, on renvoie un
+                // statut nu. Sinon le navigateur, voyant "WWW-Authenticate: Basic", affiche
+                // sa propre fenetre de login native par-dessus la SPA. C'est le formulaire
+                // Angular qui doit gerer l'auth (message d'erreur + redirection /login),
+                // l'interceptor continue d'envoyer l'en-tete Authorization: Basic.
+                .httpBasic(basic -> basic.authenticationEntryPoint((exchange, ex) -> {
+                    exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                    return exchange.getResponse().setComplete();
+                }))
                 .build();
     }
 

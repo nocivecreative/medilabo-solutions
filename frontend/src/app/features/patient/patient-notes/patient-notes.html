@@ -1,0 +1,35 @@
+<section class="notes">
+  <h2>Historique des notes</h2>
+
+  <div class="notes-body">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (!loading() && notes().length === 0) {
+      <p class="empty">Aucune note pour ce patient.</p>
+    }
+
+    @for (n of notes(); track n.id) {
+      <mat-card class="note-card" appearance="outlined">
+        <mat-card-subtitle>{{ n.date | date: 'dd/MM/yyyy à HH:mm' }}</mat-card-subtitle>
+        <mat-card-content>{{ n.note }}</mat-card-content>
+      </mat-card>
+    }
+
+    <div class="add-note">
+      <mat-form-field class="add-field">
+        <mat-label>Nouvelle note d'observation</mat-label>
+        <textarea matInput rows="3" [formControl]="noteControl"></textarea>
+      </mat-form-field>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <button mat-flat-button color="primary" type="button" (click)="add()" [disabled]="saving()">
+        Ajouter la note
+      </button>
+    </div>
+  </div>
+</section>
