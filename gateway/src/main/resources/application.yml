@@ -34,6 +34,14 @@ spring:
               predicates:
                 - Path=/patients/**
 
+            # Sprint 2 : routage vers notes-service.
+            # En Docker, surcharger NOTES_SERVICE_URI=http://notes:8082.
+            # Pas de StripPrefix : le controller notes expose deja /notes.
+            - id: notes
+              uri: ${NOTES_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/notes/**
+
 # Les utilisateurs sont geres directement en base (medilabo_auth) : la gateway
 # est un pur lecteur, aucun amorcage cote application.
 

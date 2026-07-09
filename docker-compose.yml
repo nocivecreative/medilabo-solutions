@@ -32,6 +32,28 @@ services:
       retries: 5
       start_period: 30s
 
+  mongo:
+    image: mongo:7
+    container_name: medilabo-mongo
+    environment:
+      # Le script d'init (docker-entrypoint-initdb.d) s'execute contre cette base :
+      # les notes praticien sont seedees dans medilabo_notes au premier demarrage.
+      MONGO_INITDB_DATABASE: medilabo_notes
+    volumes:
+      - mongo-data:/data/db
+      # Seed des notes des 4 cas de test : execute UNE SEULE FOIS sur volume vide.
+      - ./db/mongo-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - medilabo-net
+    # Pas de `ports:` : Mongo reste interne au reseau Docker (auth centralisee a la gateway).
+    healthcheck:
+      # Sert au depends_on du service notes : attend que Mongo accepte les commandes.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   patient:
     build: ./patient
     image: medilabo/patient:dev
@@ -57,6 +79,27 @@ services:
       retries: 5
       start_period: 20s
 
+  notes:
+    build: ./notes
+    image: medilabo/notes:dev
+    container_name: medilabo-notes
+    environment:
+      # Active le profil docker (URI Mongo vers le service `mongo`, pas localhost).
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      mongo:
+        # N'attend pas le demarrage du conteneur, mais que Mongo accepte les commandes.
+        condition: service_healthy
+    networks:
+      - medilabo-net
+    # Pas de `ports:` : service interne, joignable uniquement via la gateway.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   gateway:
     build: ./gateway
     image: medilabo/gateway:dev
@@ -67,8 +110,9 @@ services:
       # caching_sha2_password (pas de allowPublicKeyRetrieval cote R2DBC) -> TLS = seule voie.
       AUTH_DB_URL: r2dbc:mysql://mysql:3306/medilabo_auth?sslMode=PREFERRED
       SPRING_MEDILABO_AUTH_DB_PASSWORD: ${DB_PASSWORD}
-      # Routage interne vers le service patient (nom de service + port interne 8081).
+      # Routage interne vers les services metier (nom de service + port interne).
       PATIENT_SERVICE_URI: http://patient:8081
+      NOTES_SERVICE_URI: http://notes:8082
     ports:
       # SEUL port applicatif publie a l'hote : point d'entree unique de la stack.
       - "8080:8080"
@@ -76,6 +120,8 @@ services:
       mysql:
         condition: service_healthy
       patient:
+        condition: service_healthy
+      notes:
         condition: service_healthy
     networks:
       - medilabo-net
@@ -94,6 +140,7 @@ services:
 
 volumes:
   mysql-data:
+  mongo-data:
 
 networks:
   medilabo-net:
