@@ -1,0 +1,47 @@
+<div class="list-header">
+  <h1>Patients</h1>
+  <a mat-flat-button color="primary" routerLink="/patients/new">Ajouter un patient</a>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<table mat-table [dataSource]="patients()" class="patients-table">
+  <ng-container matColumnDef="nom">
+    <th mat-header-cell *matHeaderCellDef>Nom</th>
+    <td mat-cell *matCellDef="let p">{{ p.nom }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="prenom">
+    <th mat-header-cell *matHeaderCellDef>Prénom</th>
+    <td mat-cell *matCellDef="let p">{{ p.prenom }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="dateNaissance">
+    <th mat-header-cell *matHeaderCellDef>Naissance</th>
+    <td mat-cell *matCellDef="let p">{{ p.dateNaissance }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="genre">
+    <th mat-header-cell *matHeaderCellDef>Genre</th>
+    <td mat-cell *matCellDef="let p">{{ p.genre }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="telephone">
+    <th mat-header-cell *matHeaderCellDef>Téléphone</th>
+    <td mat-cell *matCellDef="let p">{{ p.telephone }}</td>
+  </ng-container>
+
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns"
+      [routerLink]="['/patients', row.id]" class="clickable-row"></tr>
+</table>
+
+<mat-paginator
+  [length]="total()"
+  [pageSize]="pageSize()"
+  [pageSizeOptions]="[5, 10, 20]"
+  (page)="onPage($event)"
+  aria-label="Pagination des patients">
+</mat-paginator>

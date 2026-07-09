@@ -80,6 +80,18 @@ services:
     networks:
       - medilabo-net
 
+  frontend:
+    build: ./frontend
+    image: medilabo/frontend:dev
+    container_name: medilabo-frontend
+    ports:
+      # Point d'entree public de l'app : nginx sert la SPA et proxifie /api -> gateway.
+      - "80:80"
+    depends_on:
+      - gateway
+    networks:
+      - medilabo-net
+
 volumes:
   mysql-data:
 

@@ -1,0 +1,11 @@
+<mat-toolbar color="primary">
+  <span>MédiLabo Solutions</span>
+  <span class="spacer"></span>
+  @if (isAuthenticated()) {
+    <button mat-button (click)="logout()">Déconnexion</button>
+  }
+</mat-toolbar>
+
+<main class="content">
+  <router-outlet />
+</main>

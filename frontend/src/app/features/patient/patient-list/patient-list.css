@@ -1,0 +1,17 @@
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.patients-table {
+  width: 100%;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
