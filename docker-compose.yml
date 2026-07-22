@@ -100,6 +100,29 @@ services:
       retries: 5
       start_period: 20s
 
+  risk:
+    build: ./risk
+    image: medilabo/risk:dev
+    container_name: medilabo-risk
+    environment:
+      # Active le profil docker (URIs des services amont vers les noms de service).
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      # Le risk-service interroge patient et notes : on attend qu'ils repondent.
+      patient:
+        condition: service_healthy
+      notes:
+        condition: service_healthy
+    networks:
+      - medilabo-net
+    # Pas de `ports:` : service interne, joignable uniquement via la gateway.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   gateway:
     build: ./gateway
     image: medilabo/gateway:dev
@@ -113,6 +136,7 @@ services:
       # Routage interne vers les services metier (nom de service + port interne).
       PATIENT_SERVICE_URI: http://patient:8081
       NOTES_SERVICE_URI: http://notes:8082
+      RISK_SERVICE_URI: http://risk:8083
     ports:
       # SEUL port applicatif publie a l'hote : point d'entree unique de la stack.
       - "8080:8080"
@@ -122,6 +146,8 @@ services:
       patient:
         condition: service_healthy
       notes:
+        condition: service_healthy
+      risk:
         condition: service_healthy
     networks:
       - medilabo-net
