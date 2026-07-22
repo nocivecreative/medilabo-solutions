@@ -11,10 +11,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -99,11 +103,22 @@ class NoteControllerTest {
                     .andExpect(jsonPath("$.id").value("gen1"));
         }
 
-        @Test
-        @DisplayName("Should return 400 when patId is missing")
-        void shouldRejectMissingPatId() throws Exception {
-            // Arrange
-            NoteDTO invalid = NoteDTO.builder().note("orpheline").build();
+        /**
+         * Les payloads rejetes par la validation Bean : memes acte et assertion,
+         * seule la donnee change -> un seul test parametre plutot que N copies.
+         */
+        static Stream<Arguments> invalidPayloads() {
+            return Stream.of(
+                    Arguments.of("patId manquant", NoteDTO.builder().note("orpheline").build()),
+                    Arguments.of("note vide", NoteDTO.builder().patId(2L).note("  ").build()),
+                    Arguments.of("note absente", NoteDTO.builder().patId(2L).build()));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("invalidPayloads")
+        @DisplayName("Should return 400 when the payload is invalid")
+        void shouldRejectInvalidPayload(String caseName, NoteDTO invalid) throws Exception {
+            // Arrange — le payload invalide du cas courant.
 
             // Act & Assert
             mockMvc.perform(post("/notes")
@@ -111,20 +126,6 @@ class NoteControllerTest {
                             .content(objectMapper.writeValueAsString(invalid)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.errors").isArray());
-        }
-
-        @Test
-        @DisplayName("Should return 400 when the note text is blank")
-        void shouldRejectBlankNote() throws Exception {
-            // Arrange
-            NoteDTO invalid = NoteDTO.builder().patId(2L).note("  ").build();
-
-            // Act & Assert
-            mockMvc.perform(post("/notes")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(invalid)))
-                    .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors").isArray());
         }
     }

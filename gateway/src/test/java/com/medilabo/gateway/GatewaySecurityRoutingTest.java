@@ -2,12 +2,19 @@ package com.medilabo.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -61,13 +68,28 @@ class GatewaySecurityRoutingTest {
                 .build();
     }
 
-    @Test
-    @DisplayName("Should return 401 on a protected route when no credentials are sent")
-    void shouldRejectProtectedRouteWithoutCredentials() {
-        // Arrange — aucune en-tete d'authentification.
+    /**
+     * Les trois facons d'echouer l'authentification sur une route protegee :
+     * elles ne different que par les en-tetes envoyes, d'ou le parametrage.
+     */
+    static Stream<Arguments> unauthorizedCases() {
+        return Stream.of(
+                Arguments.of("aucun identifiant", (Consumer<HttpHeaders>) headers -> { }),
+                Arguments.of("mot de passe errone",
+                        (Consumer<HttpHeaders>) headers -> headers.setBasicAuth(USER, "wrong-password")),
+                Arguments.of("utilisateur inconnu",
+                        (Consumer<HttpHeaders>) headers -> headers.setBasicAuth("inconnu", PASSWORD)));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unauthorizedCases")
+    @DisplayName("Should return 401 on a protected route without valid credentials")
+    void shouldRejectUnauthorizedAccess(String caseName, Consumer<HttpHeaders> credentials) {
+        // Arrange — les en-tetes du cas courant.
 
         // Act & Assert
         webTestClient.get().uri("/patients")
+                .headers(credentials)
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
@@ -81,18 +103,6 @@ class GatewaySecurityRoutingTest {
         webTestClient.get().uri("/actuator/health")
                 .exchange()
                 .expectStatus().isOk();
-    }
-
-    @Test
-    @DisplayName("Should return 401 when the password is wrong")
-    void shouldRejectInvalidCredentials() {
-        // Arrange — utilisateur connu, mot de passe errone.
-
-        // Act & Assert
-        webTestClient.get().uri("/patients")
-                .headers(h -> h.setBasicAuth(USER, "wrong-password"))
-                .exchange()
-                .expectStatus().isUnauthorized();
     }
 
     @Test
