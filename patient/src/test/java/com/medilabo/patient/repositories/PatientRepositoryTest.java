@@ -15,6 +15,10 @@ import org.springframework.test.context.ActiveProfiles;
 import com.medilabo.patient.model.Genre;
 import com.medilabo.patient.model.Patient;
 
+/**
+ * Test de tranche (milieu de pyramide) : seule la couche JPA est chargee,
+ * sur H2 en memoire. Verifie le mapping entite/table, pas la logique metier.
+ */
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -38,11 +42,17 @@ class PatientRepositoryTest {
     @Test
     @DisplayName("Should generate an id and persist all fields including the genre enum")
     void shouldPersistAndReadBack() {
-        Patient saved = patientRepository.save(newPatient());
+        // Arrange
+        Patient toPersist = newPatient();
 
-        assertThat(saved.getId()).isNotNull();
-
+        // Act
+        Patient saved = patientRepository.save(toPersist);
         Patient reloaded = patientRepository.findById(saved.getId()).orElseThrow();
+
+        // Assert
+        assertThat(saved.getId())
+                .as("L'identifiant doit etre genere par la base")
+                .isNotNull();
         assertThat(reloaded)
                 .extracting(Patient::getPrenom, Patient::getNom, Patient::getDateNaissance,
                         Patient::getGenre, Patient::getTelephone, Patient::getAdresse)
@@ -53,9 +63,14 @@ class PatientRepositoryTest {
     @Test
     @DisplayName("Should return all persisted patients")
     void shouldReturnAllPatients() {
+        // Arrange
         patientRepository.save(newPatient());
         patientRepository.save(newPatient());
 
-        assertThat(patientRepository.findAll()).hasSize(2);
+        // Act
+        var allPatients = patientRepository.findAll();
+
+        // Assert
+        assertThat(allPatients).hasSize(2);
     }
 }

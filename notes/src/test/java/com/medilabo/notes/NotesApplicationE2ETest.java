@@ -19,9 +19,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Test de bout en bout sur un vrai MongoDB ephemere (Testcontainers).
- * @ServiceConnection injecte l'URI du conteneur dans spring.data.mongodb.* — pas de
- * serveur a demarrer a la main, fidele au comportement runtime (persistance reelle).
+ * Test de bout en bout (sommet de la pyramide) sur un vrai MongoDB ephemere
+ * (Testcontainers). {@code @ServiceConnection} injecte l'URI du conteneur — pas de
+ * serveur a demarrer a la main, persistance reelle.
+ *
+ * <p>Limite assumee : @ServiceConnection fournit la connexion PAR PROGRAMME et
+ * court-circuite donc les proprietes de configuration ; ce test valide le code,
+ * pas la configuration de deploiement (validee, elle, par le run docker compose).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -40,8 +44,10 @@ class NotesApplicationE2ETest {
     @Test
     @DisplayName("A posted note is persisted and retrievable in the patient history")
     void shouldPersistAndRetrieveNote() throws Exception {
+        // Arrange
         String payload = "{\"patId\":42,\"note\":\"Le patient declare qu'il fume depuis peu\"}";
 
+        // Act — ecriture reelle en base
         mockMvc.perform(post("/notes")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
@@ -49,6 +55,7 @@ class NotesApplicationE2ETest {
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.date").isNotEmpty());
 
+        // Assert — relecture depuis Mongo
         mockMvc.perform(get("/notes/patient/{patId}", 42))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].patId").value(42))
@@ -58,6 +65,7 @@ class NotesApplicationE2ETest {
     @Test
     @DisplayName("History is returned most-recent first")
     void shouldOrderHistoryDesc() throws Exception {
+        // Arrange — deux notes ecrites successivement pour le meme patient
         mockMvc.perform(post("/notes").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"patId\":7,\"note\":\"premiere\"}"))
                 .andExpect(status().isCreated());
@@ -66,6 +74,7 @@ class NotesApplicationE2ETest {
                         .content("{\"patId\":7,\"note\":\"seconde\"}"))
                 .andExpect(status().isCreated());
 
+        // Act & Assert — le tri desc est fait par Mongo
         mockMvc.perform(get("/notes/patient/{patId}", 7))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].note").value("seconde"))

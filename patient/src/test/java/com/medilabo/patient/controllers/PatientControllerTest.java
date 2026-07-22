@@ -1,6 +1,7 @@
 package com.medilabo.patient.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -33,6 +34,10 @@ import com.medilabo.patient.exceptions.PatientNotFoundException;
 import com.medilabo.patient.model.Genre;
 import com.medilabo.patient.services.IPatientService;
 
+/**
+ * Test de tranche web (milieu de pyramide) : seule la couche MVC est chargee,
+ * le service est mocke. Verifie le contrat HTTP (statuts, JSON, en-tetes).
+ */
 @WebMvcTest(PatientController.class)
 @DisplayName("PatientController (web slice)")
 class PatientControllerTest {
@@ -61,9 +66,11 @@ class PatientControllerTest {
     @Test
     @DisplayName("GET /patients should return 200 with a paged patient list")
     void shouldListPatients() throws Exception {
+        // Arrange
         when(patientService.getPatients(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(validDto())));
 
+        // Act & Assert
         mockMvc.perform(get("/patients"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
@@ -74,13 +81,15 @@ class PatientControllerTest {
     @Test
     @DisplayName("GET /patients without params applies the default paging (size 10, sorted by nom ASC)")
     void shouldApplyDefaultPageable() throws Exception {
+        // Arrange
         when(patientService.getPatients(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(validDto())));
 
+        // Act
         mockMvc.perform(get("/patients"))
                 .andExpect(status().isOk());
 
-        // Le Pageable réellement transmis au service doit refléter @PageableDefault.
+        // Assert — le Pageable reellement transmis au service doit refleter @PageableDefault.
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(patientService).getPatients(captor.capture());
         Pageable used = captor.getValue();
@@ -94,8 +103,10 @@ class PatientControllerTest {
     @Test
     @DisplayName("GET /patients/{id} should return 200 with the patient")
     void shouldReturnPatientById() throws Exception {
+        // Arrange
         when(patientService.getPatientById(1L)).thenReturn(validDto());
 
+        // Act & Assert
         mockMvc.perform(get("/patients/{id}", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
@@ -106,8 +117,10 @@ class PatientControllerTest {
     @Test
     @DisplayName("GET /patients/{id} should return 404 when patient is unknown")
     void shouldReturn404WhenPatientMissing() throws Exception {
+        // Arrange
         when(patientService.getPatientById(99L)).thenThrow(new PatientNotFoundException(99L));
 
+        // Act & Assert
         mockMvc.perform(get("/patients/{id}", 99L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
@@ -117,24 +130,28 @@ class PatientControllerTest {
     @Test
     @DisplayName("POST /patients should return 201 with a Location header")
     void shouldCreatePatient() throws Exception {
+        // Arrange
         PatientDTO toCreate = validDto();
         toCreate.setId(null);
         when(patientService.createPatient(any(PatientDTO.class))).thenReturn(validDto());
 
+        // Act & Assert
         mockMvc.perform(post("/patients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(toCreate)))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("/patients/1")))
+                .andExpect(header().string("Location", endsWith("/patients/1")))
                 .andExpect(jsonPath("$.id").value(1));
     }
 
     @Test
     @DisplayName("POST /patients should return 400 when a mandatory field is missing")
     void shouldRejectInvalidCreation() throws Exception {
+        // Arrange
         PatientDTO invalid = validDto();
         invalid.setPrenom(null);
 
+        // Act & Assert
         mockMvc.perform(post("/patients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalid)))
@@ -146,9 +163,11 @@ class PatientControllerTest {
     @Test
     @DisplayName("PUT /patients/{id} should return 200 with the updated patient")
     void shouldUpdatePatient() throws Exception {
+        // Arrange
         PatientDTO payload = validDto();
         when(patientService.updatePatient(eq(1L), any(PatientDTO.class))).thenReturn(validDto());
 
+        // Act & Assert
         mockMvc.perform(put("/patients/{id}", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
@@ -159,10 +178,12 @@ class PatientControllerTest {
     @Test
     @DisplayName("PUT /patients/{id} should return 404 when patient is unknown")
     void shouldReturn404WhenUpdatingMissingPatient() throws Exception {
+        // Arrange
         PatientDTO payload = validDto();
         when(patientService.updatePatient(eq(99L), any(PatientDTO.class)))
                 .thenThrow(new PatientNotFoundException(99L));
 
+        // Act & Assert
         mockMvc.perform(put("/patients/{id}", 99L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
@@ -172,9 +193,11 @@ class PatientControllerTest {
     @Test
     @DisplayName("PUT /patients/{id} should return 400 when a mandatory field is invalid")
     void shouldRejectInvalidUpdate() throws Exception {
+        // Arrange
         PatientDTO invalid = validDto();
         invalid.setNom("");
 
+        // Act & Assert
         mockMvc.perform(put("/patients/{id}", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalid)))

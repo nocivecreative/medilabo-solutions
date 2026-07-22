@@ -31,8 +31,12 @@ import com.medilabo.patient.model.Genre;
 import com.medilabo.patient.model.Patient;
 import com.medilabo.patient.repositories.PatientRepository;
 
+/**
+ * Tests unitaires (base de la pyramide) : repository mocke, aucun contexte Spring.
+ * Structure Arrange-Act-Assert, un comportement verifie par test.
+ */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("PatientService")
+@DisplayName("PatientService (unit)")
 class PatientServiceTest {
 
     @Mock
@@ -74,11 +78,14 @@ class PatientServiceTest {
         @Test
         @DisplayName("Should return an empty page when no patient exists")
         void shouldReturnEmptyPageWhenNoPatient() {
+            // Arrange
             Pageable pageable = PageRequest.of(0, 20);
             when(patientRepository.findAll(pageable)).thenReturn(Page.empty(pageable));
 
+            // Act
             Page<PatientDTO> result = patientService.getPatients(pageable);
 
+            // Assert
             assertThat(result).isEmpty();
             verify(patientRepository).findAll(pageable);
         }
@@ -86,12 +93,15 @@ class PatientServiceTest {
         @Test
         @DisplayName("Should map every entity of the page to its DTO")
         void shouldMapEntitiesToDtos() {
+            // Arrange
             Pageable pageable = PageRequest.of(0, 20);
             when(patientRepository.findAll(pageable))
                     .thenReturn(new PageImpl<>(List.of(existingPatient), pageable, 1));
 
+            // Act
             Page<PatientDTO> result = patientService.getPatients(pageable);
 
+            // Assert
             assertThat(result.getContent())
                     .singleElement()
                     .extracting(PatientDTO::getId, PatientDTO::getPrenom, PatientDTO::getNom,
@@ -109,10 +119,13 @@ class PatientServiceTest {
         @Test
         @DisplayName("Should return the patient when it exists")
         void shouldReturnPatientWhenFound() {
+            // Arrange
             when(patientRepository.findById(1L)).thenReturn(Optional.of(existingPatient));
 
+            // Act
             PatientDTO result = patientService.getPatientById(1L);
 
+            // Assert
             assertThat(result)
                     .extracting(PatientDTO::getId, PatientDTO::getNom)
                     .containsExactly(1L, "Dupont");
@@ -121,8 +134,10 @@ class PatientServiceTest {
         @Test
         @DisplayName("Should throw PatientNotFoundException when patient is missing")
         void shouldThrowWhenNotFound() {
+            // Arrange
             when(patientRepository.findById(99L)).thenReturn(Optional.empty());
 
+            // Act & Assert
             assertThatThrownBy(() -> patientService.getPatientById(99L))
                     .isInstanceOf(PatientNotFoundException.class)
                     .hasMessageContaining("99");
@@ -136,10 +151,11 @@ class PatientServiceTest {
         @Test
         @DisplayName("Should force id to null and persist the new patient")
         void shouldForceIdToNullAndSave() {
+            // Arrange
             PatientDTO input = sampleDto();
             input.setId(123L);
-            // On retourne une COPIE avec l'id généré, sans muter l'argument capturé
-            // (le captor garde la référence : le muter ici fausserait l'assertion sur l'id null).
+            // On retourne une COPIE avec l'id genere, sans muter l'argument capture
+            // (le captor garde la reference : le muter ici fausserait l'assertion sur l'id null).
             when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> {
                 Patient toSave = invocation.getArgument(0);
                 return Patient.builder()
@@ -153,15 +169,18 @@ class PatientServiceTest {
                         .build();
             });
 
+            // Act
             PatientDTO result = patientService.createPatient(input);
 
+            // Assert
             ArgumentCaptor<Patient> captor = ArgumentCaptor.forClass(Patient.class);
             verify(patientRepository).save(captor.capture());
             assertThat(captor.getValue().getId())
-                    .as("Id transmis dans le payload doit être ignoré")
+                    .as("Id transmis dans le payload doit etre ignore")
                     .isNull();
-            assertThat(result.getId()).isEqualTo(7L);
-            assertThat(result.getNom()).isEqualTo("Martin");
+            assertThat(result)
+                    .extracting(PatientDTO::getId, PatientDTO::getNom)
+                    .containsExactly(7L, "Martin");
         }
     }
 
@@ -172,12 +191,16 @@ class PatientServiceTest {
         @Test
         @DisplayName("Should update every field of an existing patient")
         void shouldUpdateExistingPatient() {
+            // Arrange
             when(patientRepository.findById(1L)).thenReturn(Optional.of(existingPatient));
-            when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(patientRepository.save(any(Patient.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
             PatientDTO update = sampleDto();
 
+            // Act
             PatientDTO result = patientService.updatePatient(1L, update);
 
+            // Assert
             assertThat(result)
                     .extracting(PatientDTO::getId, PatientDTO::getPrenom, PatientDTO::getNom,
                             PatientDTO::getDateNaissance, PatientDTO::getGenre,
@@ -190,8 +213,10 @@ class PatientServiceTest {
         @Test
         @DisplayName("Should throw PatientNotFoundException and not save when patient is missing")
         void shouldThrowWhenUpdatingMissingPatient() {
+            // Arrange
             when(patientRepository.findById(42L)).thenReturn(Optional.empty());
 
+            // Act & Assert
             assertThatThrownBy(() -> patientService.updatePatient(42L, sampleDto()))
                     .isInstanceOf(PatientNotFoundException.class)
                     .hasMessageContaining("42");
