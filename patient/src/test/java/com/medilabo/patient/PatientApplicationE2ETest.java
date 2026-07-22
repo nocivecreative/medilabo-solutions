@@ -20,6 +20,11 @@ import tools.jackson.databind.ObjectMapper;
 import com.medilabo.patient.dto.PatientDTO;
 import com.medilabo.patient.model.Genre;
 
+/**
+ * Test de bout en bout (sommet de la pyramide) : contexte complet, vraie
+ * persistance (H2). Verifie qu'un patient cree traverse toutes les couches
+ * et se relit correctement — peu nombreux par nature, car les plus couteux.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -55,15 +60,17 @@ class PatientApplicationE2ETest {
     @Test
     @DisplayName("A created patient can be fetched back by its generated id")
     void shouldCreateThenFetch() throws Exception {
+        // Arrange & Act — creation via l'API, id genere par la base
         PatientDTO created = create(buildPatient("Camille", "Leroy"));
-        assertThat(created.getId()).isNotNull();
 
-        mockMvc.perform(get("/patients/{id}", created.getId()))
-                .andExpect(status().isOk());
-
+        // Act — relecture par l'id genere
         String fetched = mockMvc.perform(get("/patients/{id}", created.getId()))
+                .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         PatientDTO body = objectMapper.readValue(fetched, PatientDTO.class);
+
+        // Assert
+        assertThat(created.getId()).isNotNull();
         assertThat(body)
                 .extracting(PatientDTO::getPrenom, PatientDTO::getNom)
                 .containsExactly("Camille", "Leroy");

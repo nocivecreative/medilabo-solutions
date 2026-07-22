@@ -1,6 +1,7 @@
 package com.medilabo.patient.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -14,9 +15,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -33,6 +40,10 @@ import com.medilabo.patient.exceptions.PatientNotFoundException;
 import com.medilabo.patient.model.Genre;
 import com.medilabo.patient.services.IPatientService;
 
+/**
+ * Test de tranche web (milieu de pyramide) : seule la couche MVC est chargee,
+ * le service est mocke. Verifie le contrat HTTP (statuts, JSON, en-tetes).
+ */
 @WebMvcTest(PatientController.class)
 @DisplayName("PatientController (web slice)")
 class PatientControllerTest {
@@ -46,7 +57,8 @@ class PatientControllerTest {
     @MockitoBean
     private IPatientService patientService;
 
-    private PatientDTO validDto() {
+    /** Fabrique statique : utilisable aussi par les @MethodSource des classes @Nested. */
+    private static PatientDTO validDto() {
         return PatientDTO.builder()
                 .id(1L)
                 .prenom("Jean")
@@ -58,127 +70,183 @@ class PatientControllerTest {
                 .build();
     }
 
-    @Test
-    @DisplayName("GET /patients should return 200 with a paged patient list")
-    void shouldListPatients() throws Exception {
-        when(patientService.getPatients(any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(validDto())));
-
-        mockMvc.perform(get("/patients"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content[0].nom").value("Dupont"))
-                .andExpect(jsonPath("$.page.totalElements").value(1));
+    /** Un DTO valide auquel on applique une mutation invalidante. */
+    private static PatientDTO invalidatedBy(Consumer<PatientDTO> mutation) {
+        PatientDTO dto = validDto();
+        mutation.accept(dto);
+        return dto;
     }
 
-    @Test
-    @DisplayName("GET /patients without params applies the default paging (size 10, sorted by nom ASC)")
-    void shouldApplyDefaultPageable() throws Exception {
-        when(patientService.getPatients(any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(validDto())));
-
-        mockMvc.perform(get("/patients"))
-                .andExpect(status().isOk());
-
-        // Le Pageable réellement transmis au service doit refléter @PageableDefault.
-        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(patientService).getPatients(captor.capture());
-        Pageable used = captor.getValue();
-        assertThat(used.getPageSize()).isEqualTo(10);
-        assertThat(used.getSort().getOrderFor("nom"))
-                .isNotNull()
-                .extracting(Sort.Order::getDirection)
-                .isEqualTo(Sort.Direction.ASC);
+    /**
+     * Champs obligatoires selon les user stories : prenom, nom, date de naissance, genre.
+     * Meme acte et meme assertion pour chacun -> un seul test parametre.
+     */
+    static Stream<Arguments> invalidPayloads() {
+        return Stream.of(
+                Arguments.of("prenom absent", invalidatedBy(dto -> dto.setPrenom(null))),
+                Arguments.of("nom vide", invalidatedBy(dto -> dto.setNom(""))),
+                Arguments.of("date de naissance absente", invalidatedBy(dto -> dto.setDateNaissance(null))),
+                Arguments.of("genre absent", invalidatedBy(dto -> dto.setGenre(null))));
     }
 
-    @Test
-    @DisplayName("GET /patients/{id} should return 200 with the patient")
-    void shouldReturnPatientById() throws Exception {
-        when(patientService.getPatientById(1L)).thenReturn(validDto());
+    @Nested
+    @DisplayName("GET /patients")
+    class ListPatients {
 
-        mockMvc.perform(get("/patients/{id}", 1L))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.prenom").value("Jean"))
-                .andExpect(jsonPath("$.dateNaissance").value("1980-05-12"));
+        @Test
+        @DisplayName("Should return 200 with a paged patient list")
+        void shouldListPatients() throws Exception {
+            // Arrange
+            when(patientService.getPatients(any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(validDto())));
+
+            // Act & Assert
+            mockMvc.perform(get("/patients"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content").isArray())
+                    .andExpect(jsonPath("$.content[0].nom").value("Dupont"))
+                    .andExpect(jsonPath("$.page.totalElements").value(1));
+        }
+
+        @Test
+        @DisplayName("Should apply the default paging (size 10, sorted by nom ASC) when no param is given")
+        void shouldApplyDefaultPageable() throws Exception {
+            // Arrange
+            when(patientService.getPatients(any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(validDto())));
+
+            // Act
+            mockMvc.perform(get("/patients"))
+                    .andExpect(status().isOk());
+
+            // Assert — le Pageable reellement transmis au service doit refleter @PageableDefault.
+            ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+            verify(patientService).getPatients(captor.capture());
+            Pageable used = captor.getValue();
+            assertThat(used.getPageSize()).isEqualTo(10);
+            assertThat(used.getSort().getOrderFor("nom"))
+                    .isNotNull()
+                    .extracting(Sort.Order::getDirection)
+                    .isEqualTo(Sort.Direction.ASC);
+        }
     }
 
-    @Test
-    @DisplayName("GET /patients/{id} should return 404 when patient is unknown")
-    void shouldReturn404WhenPatientMissing() throws Exception {
-        when(patientService.getPatientById(99L)).thenThrow(new PatientNotFoundException(99L));
+    @Nested
+    @DisplayName("GET /patients/{id}")
+    class GetPatientById {
 
-        mockMvc.perform(get("/patients/{id}", 99L))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.message").value("Patient introuvable pour l'identifiant : 99"));
+        @Test
+        @DisplayName("Should return 200 with the patient")
+        void shouldReturnPatientById() throws Exception {
+            // Arrange
+            when(patientService.getPatientById(1L)).thenReturn(validDto());
+
+            // Act & Assert
+            mockMvc.perform(get("/patients/{id}", 1L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.prenom").value("Jean"))
+                    .andExpect(jsonPath("$.dateNaissance").value("1980-05-12"));
+        }
+
+        @Test
+        @DisplayName("Should return 404 when the patient is unknown")
+        void shouldReturn404WhenPatientMissing() throws Exception {
+            // Arrange
+            when(patientService.getPatientById(99L)).thenThrow(new PatientNotFoundException(99L));
+
+            // Act & Assert
+            mockMvc.perform(get("/patients/{id}", 99L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.message")
+                            .value("Patient introuvable pour l'identifiant : 99"));
+        }
     }
 
-    @Test
-    @DisplayName("POST /patients should return 201 with a Location header")
-    void shouldCreatePatient() throws Exception {
-        PatientDTO toCreate = validDto();
-        toCreate.setId(null);
-        when(patientService.createPatient(any(PatientDTO.class))).thenReturn(validDto());
+    @Nested
+    @DisplayName("POST /patients")
+    class CreatePatient {
 
-        mockMvc.perform(post("/patients")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(toCreate)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("/patients/1")))
-                .andExpect(jsonPath("$.id").value(1));
+        @Test
+        @DisplayName("Should return 201 with a Location header")
+        void shouldCreatePatient() throws Exception {
+            // Arrange
+            PatientDTO toCreate = validDto();
+            toCreate.setId(null);
+            when(patientService.createPatient(any(PatientDTO.class))).thenReturn(validDto());
+
+            // Act & Assert
+            mockMvc.perform(post("/patients")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(toCreate)))
+                    .andExpect(status().isCreated())
+                    .andExpect(header().string("Location", endsWith("/patients/1")))
+                    .andExpect(jsonPath("$.id").value(1));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("com.medilabo.patient.controllers.PatientControllerTest#invalidPayloads")
+        @DisplayName("Should return 400 when a mandatory field is missing")
+        void shouldRejectInvalidPayload(String caseName, PatientDTO invalid) throws Exception {
+            // Arrange — le payload invalide du cas courant.
+
+            // Act & Assert
+            mockMvc.perform(post("/patients")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalid)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.errors").isArray());
+        }
     }
 
-    @Test
-    @DisplayName("POST /patients should return 400 when a mandatory field is missing")
-    void shouldRejectInvalidCreation() throws Exception {
-        PatientDTO invalid = validDto();
-        invalid.setPrenom(null);
+    @Nested
+    @DisplayName("PUT /patients/{id}")
+    class UpdatePatient {
 
-        mockMvc.perform(post("/patients")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.errors").isArray());
-    }
+        @Test
+        @DisplayName("Should return 200 with the updated patient")
+        void shouldUpdatePatient() throws Exception {
+            // Arrange
+            PatientDTO payload = validDto();
+            when(patientService.updatePatient(eq(1L), any(PatientDTO.class))).thenReturn(validDto());
 
-    @Test
-    @DisplayName("PUT /patients/{id} should return 200 with the updated patient")
-    void shouldUpdatePatient() throws Exception {
-        PatientDTO payload = validDto();
-        when(patientService.updatePatient(eq(1L), any(PatientDTO.class))).thenReturn(validDto());
+            // Act & Assert
+            mockMvc.perform(put("/patients/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(payload)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1));
+        }
 
-        mockMvc.perform(put("/patients/{id}", 1L)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1));
-    }
+        @Test
+        @DisplayName("Should return 404 when the patient is unknown")
+        void shouldReturn404WhenUpdatingMissingPatient() throws Exception {
+            // Arrange
+            PatientDTO payload = validDto();
+            when(patientService.updatePatient(eq(99L), any(PatientDTO.class)))
+                    .thenThrow(new PatientNotFoundException(99L));
 
-    @Test
-    @DisplayName("PUT /patients/{id} should return 404 when patient is unknown")
-    void shouldReturn404WhenUpdatingMissingPatient() throws Exception {
-        PatientDTO payload = validDto();
-        when(patientService.updatePatient(eq(99L), any(PatientDTO.class)))
-                .thenThrow(new PatientNotFoundException(99L));
+            // Act & Assert
+            mockMvc.perform(put("/patients/{id}", 99L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(payload)))
+                    .andExpect(status().isNotFound());
+        }
 
-        mockMvc.perform(put("/patients/{id}", 99L)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isNotFound());
-    }
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("com.medilabo.patient.controllers.PatientControllerTest#invalidPayloads")
+        @DisplayName("Should return 400 when a mandatory field is invalid")
+        void shouldRejectInvalidUpdate(String caseName, PatientDTO invalid) throws Exception {
+            // Arrange — la validation s'applique aussi a la mise a jour.
 
-    @Test
-    @DisplayName("PUT /patients/{id} should return 400 when a mandatory field is invalid")
-    void shouldRejectInvalidUpdate() throws Exception {
-        PatientDTO invalid = validDto();
-        invalid.setNom("");
-
-        mockMvc.perform(put("/patients/{id}", 1L)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors").isArray());
+            // Act & Assert
+            mockMvc.perform(put("/patients/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalid)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors").isArray());
+        }
     }
 }
