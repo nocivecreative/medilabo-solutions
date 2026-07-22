@@ -1,0 +1,7 @@
+# Allege le contexte de build envoye au demon Docker (build plus rapide, image plus saine).
+target/
+.idea/
+*.iml
+.vscode/
+.git/
+HELP.md
