@@ -1,0 +1,59 @@
+:host {
+  display: block;
+}
+
+.risk {
+  margin-top: 2rem;
+}
+
+.risk h2 {
+  padding: 0 8rem;
+}
+
+/* Meme gabarit que le formulaire patient et l'historique des notes :
+   titre a gauche, corps centre sur 480px. */
+.risk-body {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.level {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Le ton porte la gravite. Couleurs sombres sur fond clair : contraste >= 4.5:1
+   (WCAG AA). La couleur n'est jamais le SEUL vecteur d'information — le libelle
+   textuel suffit a lui seul (WCAG 1.4.1, « use of color »). */
+.level[data-tone='ok'] {
+  color: #1b5e20;
+}
+
+.level[data-tone='warn'] {
+  color: #8a6100;
+}
+
+.level[data-tone='alert'] {
+  color: #b3521e;
+}
+
+.level[data-tone='critical'] {
+  color: var(--mat-sys-error, #b3261e);
+}
+
+.detail {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.triggers {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.error {
+  color: var(--mat-sys-error, #b3261e);
+  margin: 0;
+}
