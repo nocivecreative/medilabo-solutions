@@ -42,6 +42,14 @@ spring:
               predicates:
                 - Path=/notes/**
 
+            # Sprint 3 : routage vers risk-service.
+            # En Docker, surcharger RISK_SERVICE_URI=http://risk:8083.
+            # Pas de StripPrefix : le controller risk expose deja /risk.
+            - id: risk
+              uri: ${RISK_SERVICE_URI:http://localhost:8083}
+              predicates:
+                - Path=/risk/**
+
 # Les utilisateurs sont geres directement en base (medilabo_auth) : la gateway
 # est un pur lecteur, aucun amorcage cote application.
 

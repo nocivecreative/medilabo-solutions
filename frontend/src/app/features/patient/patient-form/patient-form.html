@@ -47,5 +47,8 @@
 </form>
 
 @if (patientId() !== null) {
-  <app-patient-notes [patId]="patientId()!" />
+  <!-- Synthèse d'abord, pièces justificatives ensuite : le praticien voit le
+       niveau de risque avant l'historique qui l'explique. -->
+  <app-patient-risk [patId]="patientId()!" />
+  <app-patient-notes [patId]="patientId()!" (noteAdded)="riskPanel()?.load()" />
 }

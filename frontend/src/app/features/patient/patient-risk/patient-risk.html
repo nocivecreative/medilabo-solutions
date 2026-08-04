@@ -1,0 +1,38 @@
+<section class="risk">
+  <h2>Risque de diabète</h2>
+
+  <div class="risk-body">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    @if (report(); as r) {
+      <mat-card class="risk-card" appearance="outlined">
+        <mat-card-content>
+          <!-- data-tone plutôt qu'une classe : pas de collision avec les classes
+               statiques de la carte, et le CSS reste seul juge du rendu. -->
+          <p class="level" [attr.data-tone]="display()?.tone">{{ display()?.label }}</p>
+
+          <p class="detail">
+            {{ r.age }} ans &middot;
+            {{ r.triggerCount }} déclencheur{{ r.triggerCount > 1 ? 's' : '' }} détecté{{
+              r.triggerCount > 1 ? 's' : ''
+            }}
+          </p>
+
+          @if (r.triggersFound.length > 0) {
+            <ul class="triggers">
+              @for (trigger of r.triggersFound; track trigger) {
+                <li>{{ trigger }}</li>
+              }
+            </ul>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+</section>

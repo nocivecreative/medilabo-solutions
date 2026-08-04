@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { PatientService } from '../../../core/api/patient.service';
 import { Patient } from '../../../core/api/patient.model';
 import { PatientNotes } from '../patient-notes/patient-notes';
+import { PatientRisk } from '../patient-risk/patient-risk';
 
 @Component({
   selector: 'app-patient-form',
@@ -20,6 +21,7 @@ import { PatientNotes } from '../patient-notes/patient-notes';
     MatSelectModule,
     MatButtonModule,
     PatientNotes,
+    PatientRisk,
   ],
   templateUrl: './patient-form.html',
   styleUrl: './patient-form.css',
@@ -34,6 +36,11 @@ export class PatientForm {
   // null = mode création ; un id = mode édition.
   protected readonly patientId = signal<number | null>(null);
   protected readonly saving = signal(false);
+
+  // Absent en mode création (le panneau n'est rendu qu'avec un id) : d'où le `?.`
+  // à l'appel. Recalculer le risque coûte 2 appels HTTP internes côté serveur, on
+  // ne le fait donc que sur l'événement qui peut réellement changer le résultat.
+  protected readonly riskPanel = viewChild(PatientRisk);
 
   // Champs obligatoires : prénom, nom, date de naissance, genre (cf. user stories).
   // Téléphone et adresse optionnels.

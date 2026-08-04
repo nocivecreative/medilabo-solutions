@@ -4,6 +4,7 @@ import {
   OnInit,
   inject,
   input,
+  output,
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -42,6 +43,13 @@ export class PatientNotes implements OnInit {
   /** Identifiant du patient dont on affiche l'historique (fourni par le parent). */
   readonly patId = input.required<number>();
 
+  /**
+   * Émis après l'enregistrement d'une note. La note peut introduire de nouveaux
+   * déclencheurs : le parent s'en sert pour redemander le rapport de risque.
+   * Ce composant ignore volontairement qui écoute (couplage faible).
+   */
+  readonly noteAdded = output<void>();
+
   protected readonly notes = signal<Note[]>([]);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -66,6 +74,7 @@ export class PatientNotes implements OnInit {
         this.noteControl.reset('');
         this.saving.set(false);
         this.load(); // recharge l'historique pour voir la note en tête
+        this.noteAdded.emit();
       },
       error: () => {
         this.saving.set(false);
