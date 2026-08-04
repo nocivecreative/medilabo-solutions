@@ -1,59 +1,57 @@
-# Frontend
+# Frontend — MédiLabo Solutions
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.2.
+Interface Angular de l'application de dépistage du risque de diabète.
+Générée avec [Angular CLI](https://github.com/angular/angular-cli) 22.0.2, et servie en
+production par nginx (voir `Dockerfile`).
 
-## Development server
+## Prérequis
 
-To start a local development server, run:
+- **Node.js ≥ 22** — l'Angular CLI 22 exige `v22.22.3+`, `v24.15.0+` ou `v26+`.
+- Installer les dépendances du projet :
 
-```bash
-ng serve
-```
+  ```bash
+  npm install
+  ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+  Cela installe `@angular/cli` **en local** (`node_modules/.bin/ng`). Aucune installation
+  globale de `ng` n'est nécessaire — elle est même déconseillée, car sa version pourrait
+  diverger de celle épinglée par le projet (source de « ça marche chez moi »).
 
-## Code scaffolding
+> **Pourquoi les commandes ci-dessous n'appellent pas `ng` directement ?**
+> Un `ng` nu n'existe sur le `PATH` que si l'Angular CLI est installé globalement. Deux
+> mécanismes rendent le projet portable sans ce prérequis :
+>
+> - `npm run <script>` ajoute automatiquement `node_modules/.bin` au `PATH` le temps du
+>   script → le `ng` **local** est résolu.
+> - `npx ng <cmd>` cherche d'abord le binaire local du projet (version épinglée) avant de
+>   retomber sur une éventuelle install globale.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Commandes de développement
 
-```bash
-ng generate component component-name
-```
+| Template d'origine (`ng` global) |      Équivalent portable      |
+| :------------------------------- | :---------------------------- |
+| `ng serve`                       | `npm start`                   |
+| `ng build`                       | `npm run build`               |
+| `ng test`                        | `npm test`                    |
+| `ng generate component x`        | `npx ng generate component x` |
+| `ng e2e`                         | `npx ng e2e`                  |
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Build de production
 
-```bash
-ng generate --help
-```
+`npm run build` compile l'application et stocke les artefacts dans `dist/frontend/browser/`
+(optimisé : tree-shaking, minification, hashing des noms de fichiers).
 
-## Building
+En conteneur, ce build est exécuté **dans l'image** (`Dockerfile`, stage `build`) puis servi
+par nginx qui proxifie aussi `/api` vers la gateway.
 
-To build the project run:
+> ⚠️ Après un `git pull` qui touche `frontend/`, la recompilation n'est **pas** automatique :
+> il faut reconstruire l'image, sinon Docker ressert l'ancien bundle.
+>
+> ```bash
+> docker compose up -d --build frontend
+> ```
 
-```bash
-ng build
-```
+## Ressources
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Référence complète des commandes de l'Angular CLI :
+[Angular CLI Overview and Command Reference](https://angular.dev/tools/cli).
