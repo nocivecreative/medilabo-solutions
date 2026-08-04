@@ -132,7 +132,6 @@ Cibles prévues :
 - **Diagrammes Mermaid** :
     - [`docs/diagrams/architecture-cible.mmd`](docs/diagrams/architecture-cible.mmd) — vue microservices + flux REST
     - [`docs/diagrams/mcd-mld.mmd`](docs/diagrams/mcd-mld.mmd) — modèle conceptuel et logique des données
-- **Skill projet interne** : [`.tooling/skills/medilabo-solutions/SKILL.md`](.tooling/skills/medilabo-solutions/SKILL.md)
 
 ### Architecture en bref
 
@@ -188,7 +187,6 @@ medilabo-solutions/                  ← monorepo Git
 ├── frontend/                        SPA Angular (à venir)
 │
 ├── docs/diagrams/                   Diagrammes Mermaid (.mmd)
-├── .tooling/skills/                  Skill projet interne
 │
 ├── docker-compose.yml               Orchestration globale (à venir)
 ├── medilabo.code-workspace          Config VS Code multi-root
