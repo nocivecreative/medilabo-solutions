@@ -6,6 +6,11 @@ services:
   mysql:
     image: mysql:8.4
     container_name: medilabo-mysql
+    # Sobriete (RGESN 8.x) : borne RAM/CPU du conteneur. Sans limite, chaque service se
+    # croit seul sur toute la RAM de l'hote -> le MaxRAMPercentage=75 des Dockerfiles Java
+    # dimensionne le heap sur l'hote entier. Valeurs de depart, a ajuster via `docker stats`.
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       # Cree le schema patient + l'utilisateur applicatif `medilabo` (grant auto sur CE schema).
       # Le second schema (medilabo_auth) est cree + grante par les scripts d'init.
@@ -35,6 +40,8 @@ services:
   mongo:
     image: mongo:7
     container_name: medilabo-mongo
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       # Le script d'init (docker-entrypoint-initdb.d) s'execute contre cette base :
       # les notes praticien sont seedees dans medilabo_notes au premier demarrage.
@@ -58,6 +65,8 @@ services:
     build: ./patient
     image: medilabo/patient:dev
     container_name: medilabo-patient
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       # Active le profil docker (datasource vers le service `mysql`, pas localhost).
       SPRING_PROFILES_ACTIVE: docker
@@ -83,6 +92,8 @@ services:
     build: ./notes
     image: medilabo/notes:dev
     container_name: medilabo-notes
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       # Active le profil docker (URI Mongo vers le service `mongo`, pas localhost).
       SPRING_PROFILES_ACTIVE: docker
@@ -104,6 +115,8 @@ services:
     build: ./risk
     image: medilabo/risk:dev
     container_name: medilabo-risk
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       # Active le profil docker (URIs des services amont vers les noms de service).
       SPRING_PROFILES_ACTIVE: docker
@@ -127,6 +140,16 @@ services:
     build: ./gateway
     image: medilabo/gateway:dev
     container_name: medilabo-gateway
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      # La gateway expose /actuator/health en permitAll -> le front peut attendre qu'elle
+      # soit PRETE a router (pas seulement demarree). wget fourni par l'image alpine.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       # R2DBC vers le schema auth sur le NOM DE SERVICE `mysql` (port interne 3306).
       # sslMode=PREFERRED : le driver R2DBC io.asyncer exige TLS pour le handshake
@@ -156,11 +179,21 @@ services:
     build: ./frontend
     image: medilabo/frontend:dev
     container_name: medilabo-frontend
+    mem_limit: 128m
+    cpus: 0.5
     ports:
       # Point d'entree public de l'app : nginx sert la SPA et proxifie /api -> gateway.
       - "80:80"
     depends_on:
-      - gateway
+      # Attend que la gateway soit healthy (pas juste demarree) pour un boot ordonne.
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - medilabo-net
 
