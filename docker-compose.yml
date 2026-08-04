@@ -6,6 +6,13 @@ services:
   mysql:
     image: mysql:8.4
     container_name: medilabo-mysql
+    # Sobriete (RGESN 8.x) : performance_schema est l'instrumentation interne de MySQL
+    # (schema `sys`, digests de requetes, profilage). Rien ne l'exploite ici, et il coute
+    # 242 Mo mesures -> 57% de l'empreinte du conteneur (426 Mo -> 185 Mo au repos).
+    # On ne releve pas le plafond, on baisse l'appetit. Se reactive en retirant la ligne.
+    # NB : le buffer pool est laisse a son defaut (128 Mo) : le reduire a 64 Mo n'economise
+    # que 4 Mo (allocation paresseuse) et ampute la marge de cache en lecture -> mauvais deal.
+    command: --performance-schema=OFF
     # Sobriete (RGESN 8.x) : borne RAM/CPU du conteneur. Sans limite, chaque service se
     # croit seul sur toute la RAM de l'hote -> le MaxRAMPercentage=75 des Dockerfiles Java
     # dimensionne le heap sur l'hote entier. Valeurs de depart, a ajuster via `docker stats`.
