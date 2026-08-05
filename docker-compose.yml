@@ -34,10 +34,11 @@ services:
             # Sert au `depends_on: condition: service_healthy` des futurs services applicatifs :
             # ils n'attendront pas que le conteneur demarre, mais que MySQL accepte les connexions.
             test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
-            interval: 10s
+            interval: 30s
             timeout: 5s
-            retries: 5
-            start_period: 30s
+            retries: 3
+            start_interval: 2s
+            start_period: 120s
 
     mongo:
         image: mongo:7
@@ -66,7 +67,7 @@ services:
             timeout: 8s
             retries: 2
             start_interval: 2s
-            start_period: 20s
+            start_period: 60s
 
     patient:
         build: ./patient
@@ -90,10 +91,13 @@ services:
             # /actuator/health expose par patient -> la gateway attend qu'il soit PRET a router,
             # pas seulement demarre. wget est fourni par busybox dans l'image alpine.
             test: ['CMD-SHELL', 'wget -qO- http://localhost:8081/actuator/health || exit 1']
-            interval: 10s
+            # start_period doit couvrir le demarrage JVM A FROID : pendant cette fenetre les
+            # echecs ne comptent pas, et start_interval y cadence la sonde.
+            interval: 30s
             timeout: 5s
-            retries: 5
-            start_period: 20s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
 
     notes:
         build: ./notes
@@ -113,10 +117,11 @@ services:
         # Pas de `ports:` : service interne, joignable uniquement via la gateway.
         healthcheck:
             test: ['CMD-SHELL', 'wget -qO- http://localhost:8082/actuator/health || exit 1']
-            interval: 10s
+            interval: 30s
             timeout: 5s
-            retries: 5
-            start_period: 20s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
 
     risk:
         build: ./risk
@@ -138,10 +143,11 @@ services:
         # Pas de `ports:` : service interne, joignable uniquement via la gateway.
         healthcheck:
             test: ['CMD-SHELL', 'wget -qO- http://localhost:8083/actuator/health || exit 1']
-            interval: 10s
+            interval: 30s
             timeout: 5s
-            retries: 5
-            start_period: 20s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
 
     gateway:
         build: ./gateway
@@ -153,10 +159,11 @@ services:
             # La gateway expose /actuator/health en permitAll -> le front peut attendre qu'elle
             # soit PRETE a router (pas seulement demarree). wget fourni par l'image alpine.
             test: ['CMD-SHELL', 'wget -qO- http://localhost:8080/actuator/health || exit 1']
-            interval: 10s
+            interval: 30s
             timeout: 5s
-            retries: 5
-            start_period: 30s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
         environment:
             # R2DBC vers le schema auth sur le NOM DE SERVICE `mysql` (port interne 3306).
             # sslMode=PREFERRED : le driver R2DBC io.asyncer exige TLS pour le handshake
@@ -197,10 +204,11 @@ services:
                 condition: service_healthy
         healthcheck:
             test: ['CMD-SHELL', 'wget -qO- http://localhost:80/ >/dev/null 2>&1 || exit 1']
-            interval: 10s
+            interval: 30s
             timeout: 5s
-            retries: 5
-            start_period: 10s
+            retries: 3
+            start_interval: 2s
+            start_period: 30s
         networks:
             - medilabo-net
 
