@@ -6,6 +6,10 @@ server:
 spring:
   application:
     name: gateway
+  main:
+    # Sobriete des logs : pas de banner ASCII au demarrage.
+    # Quote obligatoire -> YAML lirait `off` comme un booleen.
+    banner-mode: "off"
   # Base d'authentification dediee (schema medilabo_auth, distinct de patient).
   # Acces R2DBC (non-bloquant, obligatoire sur une gateway reactive).
   # sslMode=PREFERRED : MySQL 8.4 utilise caching_sha2_password, dont le handshake

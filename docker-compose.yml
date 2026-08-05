@@ -6,12 +6,7 @@ services:
     mysql:
         image: mysql:8.4
         container_name: medilabo-mysql
-        # Sobriete (RGESN 8.x) : performance_schema est l'instrumentation interne de MySQL
-        # (schema `sys`, digests de requetes, profilage). Rien ne l'exploite ici, et il coute
-        # 242 Mo mesures -> 57% de l'empreinte du conteneur (426 Mo -> 185 Mo au repos).
-        # On ne releve pas le plafond, on baisse l'appetit. Se reactive en retirant la ligne.
-        # NB : le buffer pool est laisse a son defaut (128 Mo) : le reduire a 64 Mo n'economise
-        # que 4 Mo (allocation paresseuse) et ampute la marge de cache en lecture -> mauvais deal.
+        # Sobriete (RGESN 8.x) : instrumentation interne de MySQL, non exploitee ici.
         command: --performance-schema=OFF
         # Sobriete (RGESN 8.x) : borne RAM/CPU du conteneur. Sans limite, chaque service se
         # croit seul sur toute la RAM de l'hote -> le MaxRAMPercentage=75 des Dockerfiles Java
@@ -47,6 +42,8 @@ services:
     mongo:
         image: mongo:7
         container_name: medilabo-mongo
+        # Sobriete des logs : coupe le bruit de mongod (commandes, evenements de connexion).
+        command: ['--quiet']
         mem_limit: 512m
         cpus: 1.0
         environment:
@@ -63,9 +60,12 @@ services:
         healthcheck:
             # Sert au depends_on du service notes : attend que Mongo accepte les commandes.
             test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
+            # L'etat de sante n'est consomme qu'au demarrage (depends_on) : start_interval
+            # cadence le boot, interval espace le regime permanent. `mongosh` est lourd a froid.
+            interval: 600s
+            timeout: 8s
+            retries: 2
+            start_interval: 2s
             start_period: 20s
 
     patient:
