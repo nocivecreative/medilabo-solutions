@@ -199,16 +199,53 @@ medilabo-solutions/                  ← monorepo Git
 
 ## 🌱 Green Code
 
-L'application sera évaluée selon le référentiel **RGESN 2024** (Arcep + ADEME + DINUM/Inria/CNIL) et complémentairement **RWEB v5** (Collectif GreenIT, juin 2025).
+Démarche d'éco-conception adossée au **RGESN 2024** (Arcep/Arcom, en lien avec l'ADEME et en collaboration avec la DINUM, l'Inria et la CNIL — 78 critères) et complétée par le **RWEB v5** (Collectif GreenIT, juin 2025).
 
-Premières mesures appliquées dès le sprint 0 :
+**Méthode retenue : mesurer avant de décider.** Chaque levier a été relevé avant et après application. Ceux qui ne paient pas ont été **écartés et documentés comme tels** — ils sont quatre, et ils valent autant que ceux qui ont été retenus.
 
-- ✅ **Images Docker multi-stage** `eclipse-temurin:25-jre-alpine` (~120 Mo par service vs ~470 Mo avec JDK + Maven)
-- ✅ **DevTools et Lombok exclus** des JAR de production via `spring-boot-maven-plugin`
-- ✅ **Hibernate `ddl-auto: validate`** + DDL versionné à la main dans `patient/src/main/resources/db/` (pas de DDL automatique, pas de Flyway — YAGNI vu le périmètre)
-- 🔜 **Pagination obligatoire** (`Pageable`) sur les listes patients / notes
-- 🔜 **Compression GZIP** côté gateway
-- 🔜 **Lazy loading** des routes Angular
-- 🔜 **Mesure EcoIndex** post-déploiement
+### Leviers appliqués
 
-Section Green Code détaillée à intégrer en fin de sprint 3 (livrable oral + section dédiée du README).
+| Levier | Effet mesuré | RGESN |
+| ------ | ------------ | ----- |
+| **`performance_schema` désactivé** sur MySQL — instrumentation interne que rien n'exploite ici | **467,6 → 221,5 Mo** (−53 %), marge avant OOM de 44 à 290 Mo | 8.x |
+| **Bornage `mem_limit` / `cpus`** sur les 7 conteneurs | Rend effectif le `-XX:MaxRAMPercentage=75` des Dockerfiles, jusque-là calculé sur la RAM de l'hôte entier | 8.x |
+| **Sobriété des logs** — sonde Mongo espacée, banners Spring coupés, driver Mongo en `WARN` | **522 → 216 lignes, 143 → 43,8 Ko** par cycle de démarrage (−70 %) | 7.x / 8.x |
+| **Cache navigateur** — `immutable` sur les assets hashés, `no-cache` sur `index.html` | Supprime la requête de revalidation, pas seulement son corps | 7.x |
+| **Polices auto-hébergées** (Roboto latin 400/500) et **icon font supprimée** | Retire 2 connexions tierces ; l'icon font n'était référencée nulle part | 7.x |
+| **Compression gzip** des réponses texte et JSON (nginx) | JSON de l'API : **−46 à −49 %** ; bundle principal : 373 → **131 Ko** | **7.2** |
+| **Pagination `Pageable`** sur la liste des patients | Traduit en `LIMIT` SQL — jamais de `findAll()` non borné | — |
+| **Lazy loading** des routes Angular (`loadComponent`) | 6 chunks chargés à la demande, pas au premier écran | — |
+| **Index Mongo sur `patId`** + tri côté serveur | Pas de chargement complet suivi d'un tri en mémoire | — |
+| **Images Docker multi-stage** (`eclipse-temurin:25-jre-alpine`, `nginx:alpine`) | Frontend **93,7 Mo**, services Java 346 à 417 Mo | 8.x |
+| **DevTools et Lombok exclus** des JAR de production | Coût runtime nul en production | 8.x |
+| **`ddl-auto: validate`** + DDL versionné à la main | Aucun DDL automatique au démarrage | — |
+
+### Optimisations écartées — sur mesure, pas par principe
+
+| Écartée | Motif |
+| ------- | ----- |
+| **Compression sur la gateway** | Le navigateur passe par nginx, qui compresse déjà le JSON : le critère 7.2 est rempli. L'ajouter ne compresserait que le tronçon gateway → nginx, **interne au réseau Docker**. |
+| **Cache serveur `LocalResponseCache`** (critère 7.1, **non retenu**) | La boucle métier est *ajouter une note → recharger l'historique → recharger le risque*. Un cache à TTL servirait ces lectures périmées ~100 ms après l'écriture. De plus `POST /notes` périme aussi `/risk/{id}` — invalider correctement supposerait d'inscrire cette règle métier dans la gateway. |
+| **Pagination des notes d'un patient** | Le `risk-service` concatène **l'historique complet** pour compter les termes déclencheurs. Paginer le ferait sous-compter (donc afficher un mauvais niveau de risque), ou l'obligerait à itérer toutes les pages pour le même volume transféré. |
+| **Buffer pool InnoDB réduit à 64 Mo** | **4,4 Mo économisés** seulement — MySQL 8 alloue le pool paresseusement — au prix de la marge de cache en lecture. Ressemble à du green code, n'en est pas. |
+
+### Mesures
+
+| Indicateur | Valeur |
+| ---------- | ------ |
+| Empreinte mémoire de la stack au repos | **1,15 Gio** sur une VM de 3,83 Gio |
+| Logs produits par un cycle démarrage + test | **216 lignes / 43,8 Ko** |
+| Bundle front transféré (gzip) | `main` **131 Ko**, CSS 1,9 Ko, polices 2 × 22 Ko |
+| Poids total des assets disponibles | **286 Ko**, dont 6 chunks chargés à la demande |
+| Réponses JSON de l'API | 163 à 777 octets, compressées |
+
+### Limites assumées
+
+- **Aucun label RGESN n'existe** à ce jour : la démarche est volontaire et déclarative. Il ne s'agit pas d'une certification.
+- Les outils EcoIndex et GreenIT-Analysis mesurent une **page web rendue** : ils ne s'appliquent pas au backend Java. Les leviers backend ont donc été mesurés directement (`docker stats`, volume de logs, taille des réponses).
+- Le dimensionnement est celui d'un projet de formation : la somme des `mem_limit` (3,13 Gio) dépasse ce que la VM peut honorer simultanément. Ce sont des **garde-fous par conteneur**, pas un plan de capacité.
+- Pas d'analyse de cycle de vie, ni d'hébergement chez un fournisseur bas-carbone.
+
+### Suites identifiées
+
+Auto-évaluation **NumEcoDiag** contre les 78 critères du RGESN, mesure **EcoIndex** de la page principale, et compilation native GraalVM pour réduire l'empreinte des JVM.
