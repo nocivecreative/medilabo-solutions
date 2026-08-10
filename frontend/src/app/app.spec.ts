@@ -8,16 +8,23 @@ describe('App', () => {
     }).compileComponents();
   });
 
-  it('should create the app', () => {
+  it('se monte sans erreur', () => {
+    // Arrange + Act
     const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+
+    // Assert
+    expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it("affiche le nom de l'application dans la barre supérieure", async () => {
+    // Arrange + Act
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
+
+    // Assert
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, frontend');
+    expect(compiled.querySelector('mat-toolbar span')?.textContent?.trim()).toBe(
+      'MédiLabo Solutions',
+    );
   });
 });

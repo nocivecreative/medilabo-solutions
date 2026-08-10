@@ -65,10 +65,18 @@ describe('PatientRisk', () => {
   });
 
   it('signale un échec du calcul sans casser la vue', async () => {
-    // Arrange
+    // Arrange + Act
     const fixture = await setup(() => throwError(() => new Error('risk-service indisponible')));
 
-    // Act + Assert
-    // TODO(human)
+    // Assert
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('.error')?.textContent?.trim()).toBe(
+      "Le rapport de risque n'a pas pu être calculé.",
+    );
+    // La vue tient : le titre subsiste, l'indicateur de chargement s'arrête, et
+    // aucune carte n'est rendue faute de rapport.
+    expect(element.querySelector('h2')?.textContent?.trim()).toBe('Risque de diabète');
+    expect(element.querySelector('mat-progress-bar')).toBeNull();
+    expect(element.querySelector('.risk-card')).toBeNull();
   });
 });

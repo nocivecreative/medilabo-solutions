@@ -1,173 +1,238 @@
-# Orchestration MédiLabo Solutions.
-# Phase 1 (en cours) : socle de persistance MySQL partage (schemas medilabo_patient + medilabo_auth).
-# Les services applicatifs (patient, gateway, frontend) seront ajoutes ensuite.
+# Orchestration MédiLabo Solutions : 2 bases, 4 microservices Java, 1 frontend nginx.
+# Point d'entree public : le port 80 (frontend). Le 8080 (gateway) est publie pour la demo.
+
+# Sobriete (RGESN 7.3/7.4) : sans options, le driver json-file de Docker n'impose
+# AUCUNE limite -> les logs s'accumulent indefiniment sur le disque.
+x-logging: &default-logging
+    driver: json-file
+    options:
+        max-size: '5m'
+        max-file: '2'
 
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: medilabo-mysql
-    environment:
-      # Cree le schema patient + l'utilisateur applicatif `medilabo` (grant auto sur CE schema).
-      # Le second schema (medilabo_auth) est cree + grante par les scripts d'init.
-      MYSQL_DATABASE: medilabo_patient
-      MYSQL_USER: medilabo
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    ports:
-      # Expose en 3307 cote hote : permet de valider patient/gateway lances en LOCAL
-      # (profil `local`, qui pointe deja sur localhost:3307) contre la base conteneurisee.
-      - "3307:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-      # Init centralise : execute UNE SEULE FOIS sur volume vide, en ordre lexical.
-      - ./db/init:/docker-entrypoint-initdb.d:ro
-    networks:
-      - medilabo-net
-    healthcheck:
-      # Sert au `depends_on: condition: service_healthy` des futurs services applicatifs :
-      # ils n'attendront pas que le conteneur demarre, mais que MySQL accepte les connexions.
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    mysql:
+        image: mysql:8.4
+        container_name: medilabo-mysql
+        logging: *default-logging
+        # Sobriete (RGESN 8.x) : instrumentation interne de MySQL, non exploitee ici.
+        command: --performance-schema=OFF
+        # Sobriete (RGESN 8.x) : borne RAM/CPU du conteneur. Sans limite, chaque service se
+        # croit seul sur toute la RAM de l'hote -> le MaxRAMPercentage=75 des Dockerfiles Java
+        # dimensionne le heap sur l'hote entier. Valeurs de depart, a ajuster via `docker stats`.
+        mem_limit: 512m
+        cpus: 1.0
+        environment:
+            # Cree le schema patient + l'utilisateur applicatif `medilabo` (grant auto sur CE schema).
+            # Le second schema (medilabo_auth) est cree + grante par les scripts d'init.
+            MYSQL_DATABASE: medilabo_patient
+            MYSQL_USER: medilabo
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+        ports:
+            # Expose en 3307 cote hote : permet de valider patient/gateway lances en LOCAL
+            # (profil `local`, qui pointe deja sur localhost:3307) contre la base conteneurisee.
+            - '3307:3306'
+        volumes:
+            - mysql-data:/var/lib/mysql
+            # Init centralise : execute UNE SEULE FOIS sur volume vide, en ordre lexical.
+            - ./db/init:/docker-entrypoint-initdb.d:ro
+        networks:
+            - medilabo-net
+        healthcheck:
+            # Sert au `depends_on: condition: service_healthy` des futurs services applicatifs :
+            # ils n'attendront pas que le conteneur demarre, mais que MySQL accepte les connexions.
+            test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_interval: 2s
+            start_period: 120s
 
-  mongo:
-    image: mongo:7
-    container_name: medilabo-mongo
-    environment:
-      # Le script d'init (docker-entrypoint-initdb.d) s'execute contre cette base :
-      # les notes praticien sont seedees dans medilabo_notes au premier demarrage.
-      MONGO_INITDB_DATABASE: medilabo_notes
-    volumes:
-      - mongo-data:/data/db
-      # Seed des notes des 4 cas de test : execute UNE SEULE FOIS sur volume vide.
-      - ./db/mongo-init:/docker-entrypoint-initdb.d:ro
-    networks:
-      - medilabo-net
-    # Pas de `ports:` : Mongo reste interne au reseau Docker (auth centralisee a la gateway).
-    healthcheck:
-      # Sert au depends_on du service notes : attend que Mongo accepte les commandes.
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    mongo:
+        image: mongo:7
+        container_name: medilabo-mongo
+        logging: *default-logging
+        # Sobriete des logs : coupe le bruit de mongod (commandes, evenements de connexion).
+        command: ['--quiet']
+        mem_limit: 512m
+        cpus: 1.0
+        environment:
+            # Le script d'init (docker-entrypoint-initdb.d) s'execute contre cette base :
+            # les notes praticien sont seedees dans medilabo_notes au premier demarrage.
+            MONGO_INITDB_DATABASE: medilabo_notes
+        volumes:
+            - mongo-data:/data/db
+            # Seed des notes des 4 cas de test : execute UNE SEULE FOIS sur volume vide.
+            - ./db/mongo-init:/docker-entrypoint-initdb.d:ro
+        networks:
+            - medilabo-net
+        # Pas de `ports:` : Mongo reste interne au reseau Docker (auth centralisee a la gateway).
+        healthcheck:
+            # Sert au depends_on du service notes : attend que Mongo accepte les commandes.
+            test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+            # L'etat de sante n'est consomme qu'au demarrage (depends_on) : start_interval
+            # cadence le boot, interval espace le regime permanent. `mongosh` est lourd a froid.
+            interval: 600s
+            timeout: 8s
+            retries: 2
+            start_interval: 2s
+            start_period: 60s
 
-  patient:
-    build: ./patient
-    image: medilabo/patient:dev
-    container_name: medilabo-patient
-    environment:
-      # Active le profil docker (datasource vers le service `mysql`, pas localhost).
-      SPRING_PROFILES_ACTIVE: docker
-      # Cablage du secret : meme valeur que DB_PASSWORD, sous le nom attendu par l'app.
-      SPRING_MEDILABO_PATIENT_DB_PASSWORD: ${DB_PASSWORD}
-    depends_on:
-      mysql:
-        # N'attend pas que le conteneur demarre, mais que MySQL accepte les connexions.
-        condition: service_healthy
-    networks:
-      - medilabo-net
-    # Pas de `ports:` : service interne, joignable uniquement via la gateway (et le reseau Docker).
-    healthcheck:
-      # /actuator/health expose par patient -> la gateway attend qu'il soit PRET a router,
-      # pas seulement demarre. wget est fourni par busybox dans l'image alpine.
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    patient:
+        build: ./patient
+        image: medilabo/patient:dev
+        container_name: medilabo-patient
+        logging: *default-logging
+        mem_limit: 512m
+        cpus: 1.0
+        environment:
+            # Active le profil docker (datasource vers le service `mysql`, pas localhost).
+            SPRING_PROFILES_ACTIVE: docker
+            # Cablage du secret : meme valeur que DB_PASSWORD, sous le nom attendu par l'app.
+            SPRING_MEDILABO_PATIENT_DB_PASSWORD: ${DB_PASSWORD}
+        depends_on:
+            mysql:
+                # N'attend pas que le conteneur demarre, mais que MySQL accepte les connexions.
+                condition: service_healthy
+        networks:
+            - medilabo-net
+        # Pas de `ports:` : service interne, joignable uniquement via la gateway (et le reseau Docker).
+        healthcheck:
+            # /actuator/health expose par patient -> la gateway attend qu'il soit PRET a router,
+            # pas seulement demarre. wget est fourni par busybox dans l'image alpine.
+            test: ['CMD-SHELL', 'wget -qO- http://localhost:8081/actuator/health || exit 1']
+            # start_period doit couvrir le demarrage JVM A FROID : pendant cette fenetre les
+            # echecs ne comptent pas, et start_interval y cadence la sonde.
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
 
-  notes:
-    build: ./notes
-    image: medilabo/notes:dev
-    container_name: medilabo-notes
-    environment:
-      # Active le profil docker (URI Mongo vers le service `mongo`, pas localhost).
-      SPRING_PROFILES_ACTIVE: docker
-    depends_on:
-      mongo:
-        # N'attend pas le demarrage du conteneur, mais que Mongo accepte les commandes.
-        condition: service_healthy
-    networks:
-      - medilabo-net
-    # Pas de `ports:` : service interne, joignable uniquement via la gateway.
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    notes:
+        build: ./notes
+        image: medilabo/notes:dev
+        container_name: medilabo-notes
+        logging: *default-logging
+        mem_limit: 512m
+        cpus: 1.0
+        environment:
+            # Active le profil docker (URI Mongo vers le service `mongo`, pas localhost).
+            SPRING_PROFILES_ACTIVE: docker
+        depends_on:
+            mongo:
+                # N'attend pas le demarrage du conteneur, mais que Mongo accepte les commandes.
+                condition: service_healthy
+        networks:
+            - medilabo-net
+        # Pas de `ports:` : service interne, joignable uniquement via la gateway.
+        healthcheck:
+            test: ['CMD-SHELL', 'wget -qO- http://localhost:8082/actuator/health || exit 1']
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
 
-  risk:
-    build: ./risk
-    image: medilabo/risk:dev
-    container_name: medilabo-risk
-    environment:
-      # Active le profil docker (URIs des services amont vers les noms de service).
-      SPRING_PROFILES_ACTIVE: docker
-    depends_on:
-      # Le risk-service interroge patient et notes : on attend qu'ils repondent.
-      patient:
-        condition: service_healthy
-      notes:
-        condition: service_healthy
-    networks:
-      - medilabo-net
-    # Pas de `ports:` : service interne, joignable uniquement via la gateway.
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    risk:
+        build: ./risk
+        image: medilabo/risk:dev
+        container_name: medilabo-risk
+        logging: *default-logging
+        mem_limit: 512m
+        cpus: 1.0
+        environment:
+            # Active le profil docker (URIs des services amont vers les noms de service).
+            SPRING_PROFILES_ACTIVE: docker
+        depends_on:
+            # Le risk-service interroge patient et notes : on attend qu'ils repondent.
+            patient:
+                condition: service_healthy
+            notes:
+                condition: service_healthy
+        networks:
+            - medilabo-net
+        # Pas de `ports:` : service interne, joignable uniquement via la gateway.
+        healthcheck:
+            test: ['CMD-SHELL', 'wget -qO- http://localhost:8083/actuator/health || exit 1']
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
 
-  gateway:
-    build: ./gateway
-    image: medilabo/gateway:dev
-    container_name: medilabo-gateway
-    environment:
-      # R2DBC vers le schema auth sur le NOM DE SERVICE `mysql` (port interne 3306).
-      # sslMode=PREFERRED : le driver R2DBC io.asyncer exige TLS pour le handshake
-      # caching_sha2_password (pas de allowPublicKeyRetrieval cote R2DBC) -> TLS = seule voie.
-      AUTH_DB_URL: r2dbc:mysql://mysql:3306/medilabo_auth?sslMode=PREFERRED
-      SPRING_MEDILABO_AUTH_DB_PASSWORD: ${DB_PASSWORD}
-      # Routage interne vers les services metier (nom de service + port interne).
-      PATIENT_SERVICE_URI: http://patient:8081
-      NOTES_SERVICE_URI: http://notes:8082
-      RISK_SERVICE_URI: http://risk:8083
-    ports:
-      # SEUL port applicatif publie a l'hote : point d'entree unique de la stack.
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      patient:
-        condition: service_healthy
-      notes:
-        condition: service_healthy
-      risk:
-        condition: service_healthy
-    networks:
-      - medilabo-net
+    gateway:
+        build: ./gateway
+        image: medilabo/gateway:dev
+        container_name: medilabo-gateway
+        logging: *default-logging
+        mem_limit: 512m
+        cpus: 1.0
+        healthcheck:
+            # La gateway expose /actuator/health en permitAll -> le front peut attendre qu'elle
+            # soit PRETE a router (pas seulement demarree). wget fourni par l'image alpine.
+            test: ['CMD-SHELL', 'wget -qO- http://localhost:8080/actuator/health || exit 1']
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_interval: 2s
+            start_period: 180s
+        environment:
+            # R2DBC vers le schema auth sur le NOM DE SERVICE `mysql` (port interne 3306).
+            # sslMode=PREFERRED : le driver R2DBC io.asyncer exige TLS pour le handshake
+            # caching_sha2_password (pas de allowPublicKeyRetrieval cote R2DBC) -> TLS = seule voie.
+            AUTH_DB_URL: r2dbc:mysql://mysql:3306/medilabo_auth?sslMode=PREFERRED
+            SPRING_MEDILABO_AUTH_DB_PASSWORD: ${DB_PASSWORD}
+            # Routage interne vers les services metier (nom de service + port interne).
+            PATIENT_SERVICE_URI: http://patient:8081
+            NOTES_SERVICE_URI: http://notes:8082
+            RISK_SERVICE_URI: http://risk:8083
+        ports:
+            # SEUL port applicatif publie a l'hote : point d'entree unique de la stack.
+            - '8080:8080'
+        depends_on:
+            mysql:
+                condition: service_healthy
+            patient:
+                condition: service_healthy
+            notes:
+                condition: service_healthy
+            risk:
+                condition: service_healthy
+        networks:
+            - medilabo-net
 
-  frontend:
-    build: ./frontend
-    image: medilabo/frontend:dev
-    container_name: medilabo-frontend
-    ports:
-      # Point d'entree public de l'app : nginx sert la SPA et proxifie /api -> gateway.
-      - "80:80"
-    depends_on:
-      - gateway
-    networks:
-      - medilabo-net
+    frontend:
+        build: ./frontend
+        image: medilabo/frontend:dev
+        container_name: medilabo-frontend
+        logging: *default-logging
+        mem_limit: 128m
+        cpus: 0.5
+        ports:
+            # Point d'entree public de l'app : nginx sert la SPA et proxifie /api -> gateway.
+            - '80:80'
+        depends_on:
+            # Attend que la gateway soit healthy (pas juste demarree) pour un boot ordonne.
+            gateway:
+                condition: service_healthy
+        healthcheck:
+            # 127.0.0.1 et non localhost : /etc/hosts resout localhost en ::1 d'abord, or
+            # la directive `listen 80;` d'nginx n'ecoute qu'en IPv4. --spider ne telecharge
+            # pas le corps et laisse la raison d'un echec dans le journal de sonde.
+            test: ['CMD-SHELL', 'wget -q --spider http://127.0.0.1:80/ || exit 1']
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_interval: 2s
+            start_period: 30s
+        networks:
+            - medilabo-net
 
 volumes:
-  mysql-data:
-  mongo-data:
+    mysql-data:
+    mongo-data:
 
 networks:
-  medilabo-net:
-    driver: bridge
+    medilabo-net:
+        driver: bridge

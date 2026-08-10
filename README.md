@@ -28,7 +28,7 @@ _« We care for you »_
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Spring Cloud](https://img.shields.io/badge/Spring_Cloud-2025.1.1-blue.svg)](https://spring.io/projects/spring-cloud)
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com/)
-[![Status](https://img.shields.io/badge/Status-Sprint_0_Bootstrap-yellow.svg)]()
+[![Status](https://img.shields.io/badge/Status-3_sprints_livres-brightgreen.svg)]()
 
 </div>
 
@@ -46,14 +46,14 @@ Le système n'est pas destiné au grand public ni aux patients eux-mêmes — l'
 
 ## Démarrage rapide
 
-> ⚠️ **Statut actuel** : sprint 0 terminé (scaffold + documentation). Endpoints fonctionnels et orchestration Docker à venir au sprint 1.
+> ✅ **Statut** : les 3 sprints sont livrés — données démographiques, historique des notes praticien et rapport de risque diabète. La stack complète démarre en une commande.
 
 ### Prérequis
 
 - **Java 25 LTS** ([Eclipse Temurin](https://adoptium.net/temurin/releases/?version=25) recommandé)
 - **Docker Desktop** (ou équivalent) + Docker Compose
 - **Git**
-- **Node.js 20+** + **npm** _(à partir de la fin du sprint 1, pour le frontend Angular)_
+- **Node.js 20+** + **npm** _(uniquement pour développer le frontend hors conteneur — le build Docker l'embarque)_
 
 ### Démarrage d'un service en isolation (dev)
 
@@ -62,7 +62,7 @@ cd patient
 ./mvnw spring-boot:run
 ```
 
-### Démarrage complet via Docker Compose (à venir)
+### Démarrage complet via Docker Compose
 
 ```bash
 docker compose up --build
@@ -85,22 +85,20 @@ code medilabo.code-workspace
 | Runtime Java                    | **OpenJDK Temurin**                                                  | **25 LTS**                 |
 | Microservices                   | **Spring Boot**                                                      | **4.0.6**                  |
 | Gateway (réactif)               | **Spring Cloud Gateway**                                             | **2025.1.1** _« Oakwood »_ |
-| Sécurité                        | **Spring Security** (HTTP Basic Auth + `InMemoryUserDetailsManager`) | aligné Boot 4              |
+| Sécurité                        | **Spring Security** — HTTP Basic Auth, utilisateurs **en base** (R2DBC) | aligné Boot 4              |
 | BDD relationnelle               | **MySQL Community**                                                  | **8.4 LTS**                |
 | BDD NoSQL                       | **MongoDB Community**                                                | 7+                         |
 | Schéma SQL                      | DDL versionné dans `patient/src/main/resources/db/*.sql`             | —                          |
 | Client HTTP inter-microservices | **`RestClient`** (Spring 6.1+, impératif)                            | aligné Boot 4              |
 | Build                           | **Maven Wrapper** (`./mvnw`)                                         | 3.9+                       |
-| Frontend                        | **Angular standalone**                                               | 20+ _(à venir)_            |
+| Frontend                        | **Angular standalone** + Angular Material                            | **22**                     |
 | Conteneurisation                | **Docker** + **Docker Compose**                                      | dernière stable            |
 
 > Toutes les décisions techno sont tracées au format **ADR (Architecture Decision Records)** — voir la section _Documentation_.
 
 ## Endpoints REST
 
-> 🔜 **Section à compléter au sprint 1** (premiers endpoints CRUD `patient-service`).
-
-Vue d'ensemble cible :
+Le frontend les consomme via `/api/**`, proxifié par nginx vers la gateway (même origine, pas de CORS).
 
 | Méthode | Endpoint (via gateway `:8080`) | Service cible | Description                       |
 | ------- | ------------------------------ | ------------- | --------------------------------- |
@@ -110,21 +108,21 @@ Vue d'ensemble cible :
 | `PUT`   | `/patients/{id}`               | patient       | Mise à jour d'un patient          |
 | `GET`   | `/notes/patient/{id}`          | notes         | Historique des notes d'un patient |
 | `POST`  | `/notes`                       | notes         | Ajout d'une note praticien        |
-| `GET`   | `/risk/{patientId}`            | risk          | Rapport de risque diabète         |
+| `GET`   | `/risk/patient/{id}`           | risk          | Rapport de risque diabète         |
 
 Toutes les routes sont protégées par **HTTP Basic Auth** au niveau de la gateway. Les microservices internes ne refont pas la vérification (réseau Docker privé).
 
-## Pipeline CI/CD
+## Qualité & vérification
 
-> 🔜 **Section à compléter** (workflows GitHub Actions au sprint 1).
+> ℹ️ **Il n'y a pas de pipeline d'intégration continue.** Les vérifications sont exécutées localement. C'est un choix assumé au vu du périmètre — dépôt privé, un seul contributeur — et non un oubli.
 
-Cibles prévues :
+**Ce qui est en place :**
 
-- ✅ **Build Maven** par service (`./mvnw verify`)
-- ✅ **Tests unitaires + intégration** (JUnit 5 + Mockito + `@SpringBootTest`)
-- 🔜 **Build images Docker** + push registry (selon contexte de soutenance)
-- 🔜 **Analyse statique** : SonarCloud ou équivalent
-- 🔜 **Dependency scan** : OWASP Dependency-Check
+- **Tests unitaires et d'intégration** — JUnit 5, Mockito, `@SpringBootTest`, et **Testcontainers** pour le `notes-service` (`@ServiceConnection` injecte l'URI du conteneur Mongo). **49 méthodes `@Test` et 6 `@ParameterizedTest`** réparties sur les 4 services, structurées en **AAA** (Arrange-Act-Assert).
+- **Couverture mesurée par JaCoCo**, configuré dans les 4 `pom.xml`.
+- **Validation runtime systématique** : `docker compose up --build` puis parcours complet — authentification, pagination, historique des notes, et les 4 rapports de risque de référence. Cette étape n'est pas redondante avec les tests : un test d'intégration qui **injecte lui-même sa connexion** valide le code, pas la configuration de déploiement. C'est précisément ainsi qu'une régression de configuration Spring Boot 4 a été détectée — invisible pour la suite de tests, révélée au premier `docker compose up`.
+
+**Écarté à ce stade** : build des images en CI, analyse statique (SonarCloud), scan de dépendances (OWASP Dependency-Check).
 
 ## Documentation
 
@@ -184,13 +182,15 @@ medilabo-solutions/                  ← monorepo Git
 ├── patient/                         CRUD patients (MySQL — table unique)
 ├── notes/                           Historique notes praticien (MongoDB)
 ├── risk/                            Calcul du niveau de risque diabète
-├── frontend/                        SPA Angular (à venir)
+├── frontend/                        SPA Angular + nginx (bundle statique, proxy /api)
 │
+├── db/init/                         Init MySQL (schémas, DDL, jeux de données)
+├── db/mongo-init/                   Seed des notes praticien
 ├── docs/diagrams/                   Diagrammes Mermaid (.mmd)
 │
-├── docker-compose.yml               Orchestration globale (à venir)
+├── docker-compose.yml               Orchestration globale des 7 services
 ├── medilabo.code-workspace          Config VS Code multi-root
-├── .env.example                     Template variables sensibles (à venir)
+├── .env.example                     Template des variables sensibles
 ├── .gitignore                       Cross-service
 └── README.md                        Ce fichier
 ```
@@ -199,16 +199,53 @@ medilabo-solutions/                  ← monorepo Git
 
 ## 🌱 Green Code
 
-L'application sera évaluée selon le référentiel **RGESN 2024** (Arcep + ADEME + DINUM/Inria/CNIL) et complémentairement **RWEB v5** (Collectif GreenIT, juin 2025).
+Démarche d'éco-conception adossée au **RGESN 2024** (Arcep/Arcom, en lien avec l'ADEME et en collaboration avec la DINUM, l'Inria et la CNIL — 78 critères) et complétée par le **RWEB v5** (Collectif GreenIT, juin 2025).
 
-Premières mesures appliquées dès le sprint 0 :
+**Méthode retenue : mesurer avant de décider.** Chaque levier a été relevé avant et après application. Ceux qui ne paient pas ont été **écartés et documentés comme tels** — ils sont quatre, et ils valent autant que ceux qui ont été retenus.
 
-- ✅ **Images Docker multi-stage** `eclipse-temurin:25-jre-alpine` (~120 Mo par service vs ~470 Mo avec JDK + Maven)
-- ✅ **DevTools et Lombok exclus** des JAR de production via `spring-boot-maven-plugin`
-- ✅ **Hibernate `ddl-auto: validate`** + DDL versionné à la main dans `patient/src/main/resources/db/` (pas de DDL automatique, pas de Flyway — YAGNI vu le périmètre)
-- 🔜 **Pagination obligatoire** (`Pageable`) sur les listes patients / notes
-- 🔜 **Compression GZIP** côté gateway
-- 🔜 **Lazy loading** des routes Angular
-- 🔜 **Mesure EcoIndex** post-déploiement
+### Leviers appliqués
 
-Section Green Code détaillée à intégrer en fin de sprint 3 (livrable oral + section dédiée du README).
+| Levier | Effet mesuré | RGESN |
+| ------ | ------------ | ----- |
+| **`performance_schema` désactivé** sur MySQL — instrumentation interne que rien n'exploite ici | **467,6 → 221,5 Mo** (−53 %), marge avant OOM de 44 à 290 Mo | 8.x |
+| **Bornage `mem_limit` / `cpus`** sur les 7 conteneurs | Rend effectif le `-XX:MaxRAMPercentage=75` des Dockerfiles, jusque-là calculé sur la RAM de l'hôte entier | 8.x |
+| **Sobriété des logs** — sonde Mongo espacée, banners Spring coupés, driver Mongo en `WARN` | **522 → 216 lignes, 143 → 43,8 Ko** par cycle de démarrage (−70 %) | 7.x / 8.x |
+| **Cache navigateur** — `immutable` sur les assets hashés, `no-cache` sur `index.html` | Supprime la requête de revalidation, pas seulement son corps | 7.x |
+| **Polices auto-hébergées** (Roboto latin 400/500) et **icon font supprimée** | Retire 2 connexions tierces ; l'icon font n'était référencée nulle part | 7.x |
+| **Compression gzip** des réponses texte et JSON (nginx) | JSON de l'API : **−46 à −49 %** ; bundle principal : 373 → **131 Ko** | **7.2** |
+| **Pagination `Pageable`** sur la liste des patients | Traduit en `LIMIT` SQL — jamais de `findAll()` non borné | — |
+| **Lazy loading** des routes Angular (`loadComponent`) | 6 chunks chargés à la demande, pas au premier écran | — |
+| **Index Mongo sur `patId`** + tri côté serveur | Pas de chargement complet suivi d'un tri en mémoire | — |
+| **Images Docker multi-stage** (`eclipse-temurin:25-jre-alpine`, `nginx:alpine`) | Frontend **93,7 Mo**, services Java 346 à 417 Mo | 8.x |
+| **DevTools et Lombok exclus** des JAR de production | Coût runtime nul en production | 8.x |
+| **`ddl-auto: validate`** + DDL versionné à la main | Aucun DDL automatique au démarrage | — |
+
+### Optimisations écartées — sur mesure, pas par principe
+
+| Écartée | Motif |
+| ------- | ----- |
+| **Compression sur la gateway** | Le navigateur passe par nginx, qui compresse déjà le JSON : le critère 7.2 est rempli. L'ajouter ne compresserait que le tronçon gateway → nginx, **interne au réseau Docker**. |
+| **Cache serveur `LocalResponseCache`** (critère 7.1, **non retenu**) | La boucle métier est *ajouter une note → recharger l'historique → recharger le risque*. Un cache à TTL servirait ces lectures périmées ~100 ms après l'écriture. De plus `POST /notes` périme aussi `/risk/{id}` — invalider correctement supposerait d'inscrire cette règle métier dans la gateway. |
+| **Pagination des notes d'un patient** | Le `risk-service` concatène **l'historique complet** pour compter les termes déclencheurs. Paginer le ferait sous-compter (donc afficher un mauvais niveau de risque), ou l'obligerait à itérer toutes les pages pour le même volume transféré. |
+| **Buffer pool InnoDB réduit à 64 Mo** | **4,4 Mo économisés** seulement — MySQL 8 alloue le pool paresseusement — au prix de la marge de cache en lecture. Ressemble à du green code, n'en est pas. |
+
+### Mesures
+
+| Indicateur | Valeur |
+| ---------- | ------ |
+| Empreinte mémoire de la stack au repos | **1,15 Gio** sur une VM de 3,83 Gio |
+| Logs produits par un cycle démarrage + test | **216 lignes / 43,8 Ko** |
+| Bundle front transféré (gzip) | `main` **131 Ko**, CSS 1,9 Ko, polices 2 × 22 Ko |
+| Poids total des assets disponibles | **286 Ko**, dont 6 chunks chargés à la demande |
+| Réponses JSON de l'API | 163 à 777 octets, compressées |
+
+### Limites assumées
+
+- **Aucun label RGESN n'existe** à ce jour : la démarche est volontaire et déclarative. Il ne s'agit pas d'une certification.
+- Les outils EcoIndex et GreenIT-Analysis mesurent une **page web rendue** : ils ne s'appliquent pas au backend Java. Les leviers backend ont donc été mesurés directement (`docker stats`, volume de logs, taille des réponses).
+- Le dimensionnement est celui d'un projet de formation : la somme des `mem_limit` (3,13 Gio) dépasse ce que la VM peut honorer simultanément. Ce sont des **garde-fous par conteneur**, pas un plan de capacité.
+- Pas d'analyse de cycle de vie, ni d'hébergement chez un fournisseur bas-carbone.
+
+### Suites identifiées
+
+Auto-évaluation **NumEcoDiag** contre les 78 critères du RGESN, mesure **EcoIndex** de la page principale, et compilation native GraalVM pour réduire l'empreinte des JVM.
