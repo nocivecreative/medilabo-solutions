@@ -28,7 +28,7 @@ _« We care for you »_
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Spring Cloud](https://img.shields.io/badge/Spring_Cloud-2025.1.1-blue.svg)](https://spring.io/projects/spring-cloud)
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com/)
-[![Status](https://img.shields.io/badge/Status-Sprint_0_Bootstrap-yellow.svg)]()
+[![Status](https://img.shields.io/badge/Status-3_sprints_livres-brightgreen.svg)]()
 
 </div>
 
@@ -46,14 +46,14 @@ Le système n'est pas destiné au grand public ni aux patients eux-mêmes — l'
 
 ## Démarrage rapide
 
-> ⚠️ **Statut actuel** : sprint 0 terminé (scaffold + documentation). Endpoints fonctionnels et orchestration Docker à venir au sprint 1.
+> ✅ **Statut** : les 3 sprints sont livrés — données démographiques, historique des notes praticien et rapport de risque diabète. La stack complète démarre en une commande.
 
 ### Prérequis
 
 - **Java 25 LTS** ([Eclipse Temurin](https://adoptium.net/temurin/releases/?version=25) recommandé)
 - **Docker Desktop** (ou équivalent) + Docker Compose
 - **Git**
-- **Node.js 20+** + **npm** _(à partir de la fin du sprint 1, pour le frontend Angular)_
+- **Node.js 20+** + **npm** _(uniquement pour développer le frontend hors conteneur — le build Docker l'embarque)_
 
 ### Démarrage d'un service en isolation (dev)
 
@@ -62,7 +62,7 @@ cd patient
 ./mvnw spring-boot:run
 ```
 
-### Démarrage complet via Docker Compose (à venir)
+### Démarrage complet via Docker Compose
 
 ```bash
 docker compose up --build
@@ -85,22 +85,20 @@ code medilabo.code-workspace
 | Runtime Java                    | **OpenJDK Temurin**                                                  | **25 LTS**                 |
 | Microservices                   | **Spring Boot**                                                      | **4.0.6**                  |
 | Gateway (réactif)               | **Spring Cloud Gateway**                                             | **2025.1.1** _« Oakwood »_ |
-| Sécurité                        | **Spring Security** (HTTP Basic Auth + `InMemoryUserDetailsManager`) | aligné Boot 4              |
+| Sécurité                        | **Spring Security** — HTTP Basic Auth, utilisateurs **en base** (R2DBC) | aligné Boot 4              |
 | BDD relationnelle               | **MySQL Community**                                                  | **8.4 LTS**                |
 | BDD NoSQL                       | **MongoDB Community**                                                | 7+                         |
 | Schéma SQL                      | DDL versionné dans `patient/src/main/resources/db/*.sql`             | —                          |
 | Client HTTP inter-microservices | **`RestClient`** (Spring 6.1+, impératif)                            | aligné Boot 4              |
 | Build                           | **Maven Wrapper** (`./mvnw`)                                         | 3.9+                       |
-| Frontend                        | **Angular standalone**                                               | 20+ _(à venir)_            |
+| Frontend                        | **Angular standalone** + Angular Material                            | **22**                     |
 | Conteneurisation                | **Docker** + **Docker Compose**                                      | dernière stable            |
 
 > Toutes les décisions techno sont tracées au format **ADR (Architecture Decision Records)** — voir la section _Documentation_.
 
 ## Endpoints REST
 
-> 🔜 **Section à compléter au sprint 1** (premiers endpoints CRUD `patient-service`).
-
-Vue d'ensemble cible :
+Le frontend les consomme via `/api/**`, proxifié par nginx vers la gateway (même origine, pas de CORS).
 
 | Méthode | Endpoint (via gateway `:8080`) | Service cible | Description                       |
 | ------- | ------------------------------ | ------------- | --------------------------------- |
@@ -110,21 +108,21 @@ Vue d'ensemble cible :
 | `PUT`   | `/patients/{id}`               | patient       | Mise à jour d'un patient          |
 | `GET`   | `/notes/patient/{id}`          | notes         | Historique des notes d'un patient |
 | `POST`  | `/notes`                       | notes         | Ajout d'une note praticien        |
-| `GET`   | `/risk/{patientId}`            | risk          | Rapport de risque diabète         |
+| `GET`   | `/risk/patient/{id}`           | risk          | Rapport de risque diabète         |
 
 Toutes les routes sont protégées par **HTTP Basic Auth** au niveau de la gateway. Les microservices internes ne refont pas la vérification (réseau Docker privé).
 
-## Pipeline CI/CD
+## Qualité & vérification
 
-> 🔜 **Section à compléter** (workflows GitHub Actions au sprint 1).
+> ℹ️ **Il n'y a pas de pipeline d'intégration continue.** Les vérifications sont exécutées localement. C'est un choix assumé au vu du périmètre — dépôt privé, un seul contributeur — et non un oubli.
 
-Cibles prévues :
+**Ce qui est en place :**
 
-- ✅ **Build Maven** par service (`./mvnw verify`)
-- ✅ **Tests unitaires + intégration** (JUnit 5 + Mockito + `@SpringBootTest`)
-- 🔜 **Build images Docker** + push registry (selon contexte de soutenance)
-- 🔜 **Analyse statique** : SonarCloud ou équivalent
-- 🔜 **Dependency scan** : OWASP Dependency-Check
+- **Tests unitaires et d'intégration** — JUnit 5, Mockito, `@SpringBootTest`, et **Testcontainers** pour le `notes-service` (`@ServiceConnection` injecte l'URI du conteneur Mongo). **49 méthodes `@Test` et 6 `@ParameterizedTest`** réparties sur les 4 services, structurées en **AAA** (Arrange-Act-Assert).
+- **Couverture mesurée par JaCoCo**, configuré dans les 4 `pom.xml`.
+- **Validation runtime systématique** : `docker compose up --build` puis parcours complet — authentification, pagination, historique des notes, et les 4 rapports de risque de référence. Cette étape n'est pas redondante avec les tests : un test d'intégration qui **injecte lui-même sa connexion** valide le code, pas la configuration de déploiement. C'est précisément ainsi qu'une régression de configuration Spring Boot 4 a été détectée — invisible pour la suite de tests, révélée au premier `docker compose up`.
+
+**Écarté à ce stade** : build des images en CI, analyse statique (SonarCloud), scan de dépendances (OWASP Dependency-Check).
 
 ## Documentation
 
@@ -184,13 +182,15 @@ medilabo-solutions/                  ← monorepo Git
 ├── patient/                         CRUD patients (MySQL — table unique)
 ├── notes/                           Historique notes praticien (MongoDB)
 ├── risk/                            Calcul du niveau de risque diabète
-├── frontend/                        SPA Angular (à venir)
+├── frontend/                        SPA Angular + nginx (bundle statique, proxy /api)
 │
+├── db/init/                         Init MySQL (schémas, DDL, jeux de données)
+├── db/mongo-init/                   Seed des notes praticien
 ├── docs/diagrams/                   Diagrammes Mermaid (.mmd)
 │
-├── docker-compose.yml               Orchestration globale (à venir)
+├── docker-compose.yml               Orchestration globale des 7 services
 ├── medilabo.code-workspace          Config VS Code multi-root
-├── .env.example                     Template variables sensibles (à venir)
+├── .env.example                     Template des variables sensibles
 ├── .gitignore                       Cross-service
 └── README.md                        Ce fichier
 ```
