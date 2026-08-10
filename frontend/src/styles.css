@@ -1,1 +1,6 @@
+/* Roboto auto-hébergé : sous-ensemble latin, graisses 400 et 500 — les seules
+   référencées par les tokens de material-theme.scss. */
+@import '@fontsource/roboto/latin-400.css';
+@import '@fontsource/roboto/latin-500.css';
+
 /* You can add global styles to this file, and also import other style files */
