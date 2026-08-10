@@ -1,11 +1,19 @@
-# Orchestration MédiLabo Solutions.
-# Phase 1 (en cours) : socle de persistance MySQL partage (schemas medilabo_patient + medilabo_auth).
-# Les services applicatifs (patient, gateway, frontend) seront ajoutes ensuite.
+# Orchestration MédiLabo Solutions : 2 bases, 4 microservices Java, 1 frontend nginx.
+# Point d'entree public : le port 80 (frontend). Le 8080 (gateway) est publie pour la demo.
+
+# Sobriete (RGESN 7.3/7.4) : sans options, le driver json-file de Docker n'impose
+# AUCUNE limite -> les logs s'accumulent indefiniment sur le disque.
+x-logging: &default-logging
+    driver: json-file
+    options:
+        max-size: '5m'
+        max-file: '2'
 
 services:
     mysql:
         image: mysql:8.4
         container_name: medilabo-mysql
+        logging: *default-logging
         # Sobriete (RGESN 8.x) : instrumentation interne de MySQL, non exploitee ici.
         command: --performance-schema=OFF
         # Sobriete (RGESN 8.x) : borne RAM/CPU du conteneur. Sans limite, chaque service se
@@ -43,6 +51,7 @@ services:
     mongo:
         image: mongo:7
         container_name: medilabo-mongo
+        logging: *default-logging
         # Sobriete des logs : coupe le bruit de mongod (commandes, evenements de connexion).
         command: ['--quiet']
         mem_limit: 512m
@@ -73,6 +82,7 @@ services:
         build: ./patient
         image: medilabo/patient:dev
         container_name: medilabo-patient
+        logging: *default-logging
         mem_limit: 512m
         cpus: 1.0
         environment:
@@ -103,6 +113,7 @@ services:
         build: ./notes
         image: medilabo/notes:dev
         container_name: medilabo-notes
+        logging: *default-logging
         mem_limit: 512m
         cpus: 1.0
         environment:
@@ -127,6 +138,7 @@ services:
         build: ./risk
         image: medilabo/risk:dev
         container_name: medilabo-risk
+        logging: *default-logging
         mem_limit: 512m
         cpus: 1.0
         environment:
@@ -153,6 +165,7 @@ services:
         build: ./gateway
         image: medilabo/gateway:dev
         container_name: medilabo-gateway
+        logging: *default-logging
         mem_limit: 512m
         cpus: 1.0
         healthcheck:
@@ -193,6 +206,7 @@ services:
         build: ./frontend
         image: medilabo/frontend:dev
         container_name: medilabo-frontend
+        logging: *default-logging
         mem_limit: 128m
         cpus: 0.5
         ports:
