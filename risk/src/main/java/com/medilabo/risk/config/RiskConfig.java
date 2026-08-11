@@ -17,7 +17,7 @@ import org.springframework.web.client.RestClient;
 public class RiskConfig {
 
     @Bean
-    RestClient.Builder restClientBuilder() {
+    public RestClient.Builder restClientBuilder() {
         return RestClient.builder();
     }
 }

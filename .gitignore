@@ -28,6 +28,9 @@
 # --- IDE — VS Code (selective) ---
 # On commit le workspace + les configs partageables.
 # On ignore les configs personnelles (lancement, debug perso).
+# settings.json : ignoré car medilabo.code-workspace porte déjà les réglages
+# partagés. Deux fichiers versionnés pour les mêmes clés finissent par diverger.
+.vscode/settings.json
 .vscode/launch.json
 .vscode/.ropeproject/
 

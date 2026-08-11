@@ -34,6 +34,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @DisplayName("Notes API (end-to-end, real MongoDB)")
 class NotesApplicationE2ETest {
 
+    // Jamais lu par le test : @Container en pilote le cycle de vie et
+    // @ServiceConnection en injecte l'URI, tous deux par reflexion.
+    @SuppressWarnings("unused")
     @Container
     @ServiceConnection
     static MongoDBContainer mongo = new MongoDBContainer("mongo:7");

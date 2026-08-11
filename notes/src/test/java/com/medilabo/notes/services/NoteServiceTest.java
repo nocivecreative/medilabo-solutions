@@ -42,6 +42,8 @@ class NoteServiceTest {
         return Note.builder().id(id).patId(patId).note(text).date(date).build();
     }
 
+    // Classe instanciee par JUnit via reflexion : aucun appelant visible du compilateur.
+    @SuppressWarnings("unused")
     @Nested
     @DisplayName("getNotesByPatId")
     class GetNotesByPatId {
@@ -108,6 +110,7 @@ class NoteServiceTest {
         }
     }
 
+    @SuppressWarnings("unused")
     @Nested
     @DisplayName("addNote")
     class AddNote {
