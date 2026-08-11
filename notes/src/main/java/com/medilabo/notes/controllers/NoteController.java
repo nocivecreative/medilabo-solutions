@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.medilabo.notes.dto.NoteDTO;
-import com.medilabo.notes.services.INoteService;
+import com.medilabo.notes.services.NoteService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ public class NoteController {
 
     private static final Logger logger = LoggerFactory.getLogger(NoteController.class);
 
-    private final INoteService noteService;
+    private final NoteService noteService;
 
     /**
      * Historique des notes d'un patient (US « Vue historique du patient »).

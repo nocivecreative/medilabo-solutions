@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.medilabo.risk.dto.RiskReportDTO;
-import com.medilabo.risk.service.IRiskService;
+import com.medilabo.risk.service.RiskService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ public class RiskController {
 
     private static final Logger logger = LoggerFactory.getLogger(RiskController.class);
 
-    private final IRiskService riskService;
+    private final RiskService riskService;
 
     /**
      * Rapport de risque de diabète d'un patient (US « Générer un rapport de diabète »).

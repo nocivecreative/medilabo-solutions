@@ -27,7 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import tools.jackson.databind.ObjectMapper;
 import com.medilabo.notes.dto.NoteDTO;
-import com.medilabo.notes.services.INoteService;
+import com.medilabo.notes.services.NoteService;
 
 /**
  * Test de tranche web (milieu de pyramide) : seule la couche MVC est chargee,
@@ -44,7 +44,7 @@ class NoteControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private INoteService noteService;
+    private NoteService noteService;
 
     @Nested
     @DisplayName("GET /notes/patient/{patId}")

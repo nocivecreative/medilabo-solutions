@@ -20,13 +20,12 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class RiskService implements IRiskService {
+public class RiskService {
 
     private final PatientClient patientClient;
     private final NoteClient noteClient;
     private final TriggerDetector triggerDetector;
 
-    @Override
     public RiskReportDTO assessRisk(Long patId) {
         PatientView patient = patientClient.getPatient(patId);
         List<NoteView> notes = noteClient.getNotes(patId);

@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.medilabo.patient.dto.PatientDTO;
-import com.medilabo.patient.services.IPatientService;
+import com.medilabo.patient.services.PatientService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class PatientController {
 
     private static final Logger logger = LoggerFactory.getLogger(PatientController.class);
 
-    private final IPatientService patientService;
+    private final PatientService patientService;
 
     /**
      * Liste paginée des patients.

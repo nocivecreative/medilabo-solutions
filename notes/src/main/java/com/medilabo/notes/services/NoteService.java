@@ -13,18 +13,16 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class NoteService implements INoteService {
+public class NoteService {
 
     private final NoteRepository noteRepository;
 
-    @Override
     public List<NoteDTO> getNotesByPatId(Long patId) {
         return noteRepository.findByPatIdOrderByDateDesc(patId).stream()
                 .map(this::toDTO)
                 .toList();
     }
 
-    @Override
     public NoteDTO addNote(NoteDTO dto) {
         // L'id et la date sont maîtrisés côté serveur : on ignore tout ce que le client aurait transmis.
         Note note = Note.builder()

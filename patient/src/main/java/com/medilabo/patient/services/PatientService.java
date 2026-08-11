@@ -14,11 +14,10 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class PatientService implements IPatientService {
+public class PatientService {
 
     private final PatientRepository patientRepository;
 
-    @Override
     @Transactional(readOnly = true)
     public Page<PatientDTO> getPatients(Pageable pageable) {
         // findAll(Pageable) traduit page/size/sort en LIMIT/OFFSET/ORDER BY cote SQL :
@@ -26,7 +25,6 @@ public class PatientService implements IPatientService {
         return patientRepository.findAll(pageable).map(this::toDTO);
     }
 
-    @Override
     @Transactional(readOnly = true)
     public PatientDTO getPatientById(Long id) {
         Patient patient = patientRepository.findById(id)
@@ -34,7 +32,6 @@ public class PatientService implements IPatientService {
         return toDTO(patient);
     }
 
-    @Override
     @Transactional
     public PatientDTO createPatient(PatientDTO dto) {
         Patient patient = new Patient();
@@ -42,7 +39,6 @@ public class PatientService implements IPatientService {
         return toDTO(patientRepository.save(patient));
     }
 
-    @Override
     @Transactional
     public PatientDTO updatePatient(Long id, PatientDTO dto) {
         Patient patient = patientRepository.findById(id)

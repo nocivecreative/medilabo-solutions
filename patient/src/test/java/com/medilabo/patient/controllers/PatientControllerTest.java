@@ -37,7 +37,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.medilabo.patient.dto.PatientDTO;
 import com.medilabo.patient.exceptions.PatientNotFoundException;
 import com.medilabo.patient.model.Genre;
-import com.medilabo.patient.services.IPatientService;
+import com.medilabo.patient.services.PatientService;
 
 /**
  * Test de tranche web (milieu de pyramide) : seule la couche MVC est chargee,
@@ -54,7 +54,7 @@ class PatientControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private IPatientService patientService;
+    private PatientService patientService;
 
     /** Fabrique statique : utilisable aussi par les @MethodSource des classes @Nested. */
     private static PatientDTO validDto() {
