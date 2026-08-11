@@ -58,7 +58,9 @@ public class PatientController {
     @GetMapping("/{id}")
     public ResponseEntity<PatientDTO> getPatientById(@PathVariable Long id) {
         logger.info("[CALL] GET /patients/{}", id);
-        return ResponseEntity.ok(patientService.getPatientById(id));
+        PatientDTO patient = patientService.getPatientById(id);
+        logger.info("[RESPONSE] GET /patients/{} -> OK", id);
+        return ResponseEntity.ok(patient);
     }
 
     /**
@@ -66,7 +68,9 @@ public class PatientController {
      */
     @PostMapping
     public ResponseEntity<PatientDTO> createPatient(@Valid @RequestBody PatientDTO dto) {
-        logger.info("[CALL] POST /patients - {} {}", dto.prenom(), dto.nom());
+        // Pas de nom ni prenom dans les logs : donnee identifiante. L'id genere,
+        // journalise en reponse, suffit a tracer la creation.
+        logger.info("[CALL] POST /patients");
         PatientDTO created = patientService.createPatient(dto);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")

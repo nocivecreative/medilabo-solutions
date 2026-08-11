@@ -30,8 +30,10 @@ public class RiskController {
     public ResponseEntity<RiskReportDTO> getRisk(@PathVariable Long patId) {
         logger.info("[CALL] GET /risk/patient/{}", patId);
         RiskReportDTO report = riskService.assessRisk(patId);
-        logger.info("[RESPONSE] GET /risk/patient/{} -> {} ({} déclencheur(s))",
-                patId, report.riskLevel(), report.triggerCount());
+        // Ne JAMAIS journaliser le niveau de risque ni le nombre de declencheurs :
+        // associes a un patId, ce sont des donnees de sante. Les logs conteneur
+        // n'ont pas le controle d'acces de la base.
+        logger.info("[RESPONSE] GET /risk/patient/{} -> rapport calcule", patId);
         return ResponseEntity.ok(report);
     }
 }

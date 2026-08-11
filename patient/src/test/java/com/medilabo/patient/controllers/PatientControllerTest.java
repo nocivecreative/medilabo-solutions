@@ -153,7 +153,7 @@ class PatientControllerTest {
             mockMvc.perform(get("/patients/{id}", 99L))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.status").value(404))
-                    .andExpect(jsonPath("$.message")
+                    .andExpect(jsonPath("$.detail")
                             .value("Patient introuvable pour l'identifiant : 99"));
         }
     }
