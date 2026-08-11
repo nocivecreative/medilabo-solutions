@@ -88,13 +88,13 @@ code medilabo.code-workspace
 | Sécurité                        | **Spring Security** — HTTP Basic Auth, utilisateurs **en base** (R2DBC) | aligné Boot 4              |
 | BDD relationnelle               | **MySQL Community**                                                  | **8.4 LTS**                |
 | BDD NoSQL                       | **MongoDB Community**                                                | 7+                         |
-| Schéma SQL                      | DDL versionné dans `patient/src/main/resources/db/*.sql`             | —                          |
+| Schéma SQL                      | DDL versionné dans `db/init/*.sql`, joué au 1er démarrage MySQL       | —                          |
 | Client HTTP inter-microservices | **`RestClient`** (Spring 6.1+, impératif)                            | aligné Boot 4              |
 | Build                           | **Maven Wrapper** (`./mvnw`)                                         | 3.9+                       |
 | Frontend                        | **Angular standalone** + Angular Material                            | **22**                     |
 | Conteneurisation                | **Docker** + **Docker Compose**                                      | dernière stable            |
 
-> Toutes les décisions techno sont tracées au format **ADR (Architecture Decision Records)** — voir la section _Documentation_.
+> Le raisonnement derrière chaque choix technique vit dans les **messages de commit** — contexte, alternatives pesées, mesures avant/après. `git log` tient lieu de registre de décisions.
 
 ## Endpoints REST
 
@@ -112,13 +112,34 @@ Le frontend les consomme via `/api/**`, proxifié par nginx vers la gateway (mê
 
 Toutes les routes sont protégées par **HTTP Basic Auth** au niveau de la gateway. Les microservices internes ne refont pas la vérification (réseau Docker privé).
 
+Les erreurs suivent le format **`ProblemDetail`** (RFC 9457), servi en `application/problem+json` :
+
+```json
+{ "type": "about:blank", "title": "Not Found", "status": 404,
+  "detail": "Patient introuvable pour l'identifiant : 999", "instance": "/patients/999" }
+```
+
+Les erreurs de validation y ajoutent un tableau `errors`, une entrée par champ refusé.
+
+## Sécurité & données de santé
+
+L'application manipule des données de santé : le traitement de ces données a guidé plusieurs choix, au-delà de l'authentification.
+
+- **Authentification centralisée à la gateway** — les services métier ne la refont pas et ne sont **pas exposés** : seuls les ports 80 (frontend) et 8080 (gateway) sont publiés, les deux bases et les trois microservices restent sur le réseau Docker privé.
+- **Identifiants en base**, pas en dur — table `app_user` dédiée dans un schéma séparé, mots de passe en **BCrypt** avec préfixe d'algorithme. Aucun endpoint d'inscription : la gateway est un pur lecteur.
+- **Aucune donnée de santé dans les traces.** Les logs applicatifs ne portent que des identifiants pseudonymes et des compteurs — jamais le niveau de risque d'un patient, son nom, ni le texte d'une note. Les logs conteneur sont lisibles par quiconque accède au démon Docker, sans le contrôle d'accès qui protège la base : une donnée de santé qui y atterrit sort du périmètre pensé pour elle.
+- **Aucune duplication de données démographiques** hors de `patient-service` — les notes ne portent qu'un `patId`, jamais le nom du patient.
+- **Aucun appel à un tiers** dans le chemin de démarrage de l'interface : les polices sont auto-hébergées, ce qui évite de transmettre l'adresse IP des praticiens à un CDN externe.
+
+**Limites assumées** : HTTP simple en local — **HTTPS serait un préalable non négociable** en production, Basic Auth transmettant les identifiants encodés en Base64 à chaque requête. Pas de rôles ni de piste d'audit : hors du périmètre exprimé par le client.
+
 ## Qualité & vérification
 
 > ℹ️ **Il n'y a pas de pipeline d'intégration continue.** Les vérifications sont exécutées localement. C'est un choix assumé au vu du périmètre — dépôt privé, un seul contributeur — et non un oubli.
 
 **Ce qui est en place :**
 
-- **Tests unitaires et d'intégration** — JUnit 5, Mockito, `@SpringBootTest`, et **Testcontainers** pour le `notes-service` (`@ServiceConnection` injecte l'URI du conteneur Mongo). **49 méthodes `@Test` et 6 `@ParameterizedTest`** réparties sur les 4 services, structurées en **AAA** (Arrange-Act-Assert).
+- **Tests unitaires et d'intégration** — JUnit 5, Mockito, `@SpringBootTest`, et **Testcontainers** pour le `notes-service` (`@ServiceConnection` injecte l'URI du conteneur Mongo). **49 méthodes `@Test` et 6 `@ParameterizedTest`** réparties sur les 4 services — soit **80 tests exécutés**, les cas paramétrés se déployant à l'exécution — structurées en **AAA** (Arrange-Act-Assert).
 - **Couverture mesurée par JaCoCo**, configuré dans les 4 `pom.xml`.
 - **Validation runtime systématique** : `docker compose up --build` puis parcours complet — authentification, pagination, historique des notes, et les 4 rapports de risque de référence. Cette étape n'est pas redondante avec les tests : un test d'intégration qui **injecte lui-même sa connexion** valide le code, pas la configuration de déploiement. C'est précisément ainsi qu'une régression de configuration Spring Boot 4 a été détectée — invisible pour la suite de tests, révélée au premier `docker compose up`.
 
@@ -126,7 +147,7 @@ Toutes les routes sont protégées par **HTTP Basic Auth** au niveau de la gatew
 
 ## Documentation
 
-- **Hub Notion projet** : ADR-01 à ADR-08, cheat sheets Initializr, checklist post-bootstrap, workflow Git _(accès restreint)_
+- **Registre des décisions** : les messages de commit portent le contexte, les alternatives écartées et les mesures qui ont tranché. `git log --no-merges` déroule les arbitrages un à un ; les commits de merge résument chaque incrément.
 - **Diagrammes Mermaid** :
     - [`docs/diagrams/architecture-cible.mmd`](docs/diagrams/architecture-cible.mmd) — vue microservices + flux REST
     - [`docs/diagrams/mcd-mld.mmd`](docs/diagrams/mcd-mld.mmd) — modèle conceptuel et logique des données
@@ -195,7 +216,7 @@ medilabo-solutions/                  ← monorepo Git
 └── README.md                        Ce fichier
 ```
 
-> 💡 **Chaque microservice est un projet Maven autonome** — pas de POM parent au niveau racine. C'est un choix architectural conscient (cf. _Architecture du monorepo_ dans le hub Notion). Un service peut être extrait dans son propre repo Git sans modification.
+> 💡 **Chaque microservice est un projet Maven autonome** — pas de POM parent au niveau racine. C'est un choix architectural conscient : un POM parent couplerait les versions de Spring Boot entre services, ce qui irait contre l'esprit microservices. Un service peut être extrait dans son propre repo Git sans modification.
 
 ## 🌱 Green Code
 
