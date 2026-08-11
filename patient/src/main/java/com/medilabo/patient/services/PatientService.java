@@ -37,9 +37,8 @@ public class PatientService implements IPatientService {
     @Override
     @Transactional
     public PatientDTO createPatient(PatientDTO dto) {
-        Patient patient = toEntity(dto);
-        // L'identifiant est généré par la base — on ignore tout id transmis dans le payload.
-        patient.setId(null);
+        Patient patient = new Patient();
+        applyTo(patient, dto);
         return toDTO(patientRepository.save(patient));
     }
 
@@ -48,36 +47,29 @@ public class PatientService implements IPatientService {
     public PatientDTO updatePatient(Long id, PatientDTO dto) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new PatientNotFoundException(id));
-        patient.setPrenom(dto.getPrenom());
-        patient.setNom(dto.getNom());
-        patient.setDateNaissance(dto.getDateNaissance());
-        patient.setGenre(dto.getGenre());
-        patient.setTelephone(dto.getTelephone());
-        patient.setAdresse(dto.getAdresse());
+        applyTo(patient, dto);
         return toDTO(patientRepository.save(patient));
     }
 
-    private PatientDTO toDTO(Patient p) {
-        return PatientDTO.builder()
-                .id(p.getId())
-                .prenom(p.getPrenom())
-                .nom(p.getNom())
-                .dateNaissance(p.getDateNaissance())
-                .genre(p.getGenre())
-                .telephone(p.getTelephone())
-                .adresse(p.getAdresse())
-                .build();
+    /**
+     * Recopie les champs modifiables du DTO vers l'entité — création et mise à jour
+     * partagent la même liste, donc ajouter un champ ne se fait qu'à un seul endroit.
+     *
+     * <p>L'identifiant n'en fait volontairement PAS partie : il est généré par la base
+     * à la création et immuable ensuite. Tout id transmis par le client est donc ignoré
+     * par construction, sans avoir à le neutraliser après coup.
+     */
+    private void applyTo(Patient patient, PatientDTO dto) {
+        patient.setPrenom(dto.prenom());
+        patient.setNom(dto.nom());
+        patient.setDateNaissance(dto.dateNaissance());
+        patient.setGenre(dto.genre());
+        patient.setTelephone(dto.telephone());
+        patient.setAdresse(dto.adresse());
     }
 
-    private Patient toEntity(PatientDTO dto) {
-        return Patient.builder()
-                .id(dto.getId())
-                .prenom(dto.getPrenom())
-                .nom(dto.getNom())
-                .dateNaissance(dto.getDateNaissance())
-                .genre(dto.getGenre())
-                .telephone(dto.getTelephone())
-                .adresse(dto.getAdresse())
-                .build();
+    private PatientDTO toDTO(Patient p) {
+        return new PatientDTO(p.getId(), p.getPrenom(), p.getNom(), p.getDateNaissance(),
+                p.getGenre(), p.getTelephone(), p.getAdresse());
     }
 }

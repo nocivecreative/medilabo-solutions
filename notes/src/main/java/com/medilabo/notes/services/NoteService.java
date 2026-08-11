@@ -28,19 +28,14 @@ public class NoteService implements INoteService {
     public NoteDTO addNote(NoteDTO dto) {
         // L'id et la date sont maîtrisés côté serveur : on ignore tout ce que le client aurait transmis.
         Note note = Note.builder()
-                .patId(dto.getPatId())
-                .note(dto.getNote())
+                .patId(dto.patId())
+                .note(dto.note())
                 .date(Instant.now())
                 .build();
         return toDTO(noteRepository.save(note));
     }
 
     private NoteDTO toDTO(Note n) {
-        return NoteDTO.builder()
-                .id(n.getId())
-                .patId(n.getPatId())
-                .note(n.getNote())
-                .date(n.getDate())
-                .build();
+        return new NoteDTO(n.getId(), n.getPatId(), n.getNote(), n.getDate());
     }
 }

@@ -38,14 +38,8 @@ class PatientApplicationE2ETest {
     private ObjectMapper objectMapper;
 
     private PatientDTO buildPatient(String prenom, String nom) {
-        return PatientDTO.builder()
-                .prenom(prenom)
-                .nom(nom)
-                .dateNaissance(LocalDate.of(1988, 7, 21))
-                .genre(Genre.M)
-                .telephone("0102030405")
-                .adresse("8 boulevard Voltaire")
-                .build();
+        return new PatientDTO(null, prenom, nom, LocalDate.of(1988, 7, 21), Genre.M,
+                "0102030405", "8 boulevard Voltaire");
     }
 
     private PatientDTO create(PatientDTO dto) throws Exception {
@@ -64,15 +58,15 @@ class PatientApplicationE2ETest {
         PatientDTO created = create(buildPatient("Camille", "Leroy"));
 
         // Act — relecture par l'id genere
-        String fetched = mockMvc.perform(get("/patients/{id}", created.getId()))
+        String fetched = mockMvc.perform(get("/patients/{id}", created.id()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         PatientDTO body = objectMapper.readValue(fetched, PatientDTO.class);
 
         // Assert
-        assertThat(created.getId()).isNotNull();
+        assertThat(created.id()).isNotNull();
         assertThat(body)
-                .extracting(PatientDTO::getPrenom, PatientDTO::getNom)
+                .extracting(PatientDTO::prenom, PatientDTO::nom)
                 .containsExactly("Camille", "Leroy");
     }
 }

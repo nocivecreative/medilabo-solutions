@@ -4,28 +4,28 @@ import java.time.Instant;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class NoteDTO {
+/**
+ * Payload d'API d'une note d'observation, découplé du document MongoDB.
+ *
+ * <p>Record plutôt que classe : un DTO n'est qu'un porteur de valeurs immuable.
+ * Le compilateur génère accesseurs, {@code equals}, {@code hashCode} et
+ * {@code toString} ; les contraintes de validation portent sur les composants.
+ *
+ * @param id    identifiant Mongo — renvoyé en réponse, ignoré en création
+ * @param patId identifiant du patient rattaché (obligatoire)
+ * @param note  texte libre de l'observation (obligatoire)
+ * @param date  horodatage posé côté serveur ; jamais accepté depuis le client
+ */
+public record NoteDTO(
 
-    /** Identifiant Mongo — renvoyé en réponse, ignoré en création. */
-    private String id;
+        String id,
 
-    @NotNull(message = "L'identifiant du patient doit être fourni")
-    private Long patId;
+        @NotNull(message = "L'identifiant du patient doit être fourni")
+        Long patId,
 
-    @NotBlank(message = "La note ne doit pas être vide")
-    private String note;
+        @NotBlank(message = "La note ne doit pas être vide")
+        String note,
 
-    /** Posé côté serveur à la création ; jamais accepté depuis le client. */
-    private Instant date;
+        Instant date) {
 }

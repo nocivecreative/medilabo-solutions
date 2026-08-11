@@ -66,13 +66,13 @@ public class PatientController {
      */
     @PostMapping
     public ResponseEntity<PatientDTO> createPatient(@Valid @RequestBody PatientDTO dto) {
-        logger.info("[CALL] POST /patients - {} {}", dto.getPrenom(), dto.getNom());
+        logger.info("[CALL] POST /patients - {} {}", dto.prenom(), dto.nom());
         PatientDTO created = patientService.createPatient(dto);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(created.getId())
+                .buildAndExpand(created.id())
                 .toUri();
-        logger.info("[RESPONSE] POST /patients -> id={}", created.getId());
+        logger.info("[RESPONSE] POST /patients -> id={}", created.id());
         return ResponseEntity.created(location).body(created);
     }
 

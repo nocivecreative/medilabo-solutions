@@ -46,13 +46,13 @@ public class NoteController {
      */
     @PostMapping
     public ResponseEntity<NoteDTO> addNote(@Valid @RequestBody NoteDTO dto) {
-        logger.info("[CALL] POST /notes - patId={}", dto.getPatId());
+        logger.info("[CALL] POST /notes - patId={}", dto.patId());
         NoteDTO created = noteService.addNote(dto);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(created.getId())
+                .buildAndExpand(created.id())
                 .toUri();
-        logger.info("[RESPONSE] POST /notes -> id={}", created.getId());
+        logger.info("[RESPONSE] POST /notes -> id={}", created.id());
         return ResponseEntity.created(location).body(created);
     }
 }

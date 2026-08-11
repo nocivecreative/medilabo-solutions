@@ -61,14 +61,8 @@ class PatientServiceTest {
     }
 
     private PatientDTO sampleDto() {
-        return PatientDTO.builder()
-                .prenom("Marie")
-                .nom("Martin")
-                .dateNaissance(LocalDate.of(1992, 3, 8))
-                .genre(Genre.F)
-                .telephone("0605040302")
-                .adresse("5 avenue du Parc")
-                .build();
+        return new PatientDTO(null, "Marie", "Martin", LocalDate.of(1992, 3, 8), Genre.F,
+                "0605040302", "5 avenue du Parc");
     }
 
     @Nested
@@ -104,9 +98,9 @@ class PatientServiceTest {
             // Assert
             assertThat(result.getContent())
                     .singleElement()
-                    .extracting(PatientDTO::getId, PatientDTO::getPrenom, PatientDTO::getNom,
-                            PatientDTO::getDateNaissance, PatientDTO::getGenre,
-                            PatientDTO::getTelephone, PatientDTO::getAdresse)
+                    .extracting(PatientDTO::id, PatientDTO::prenom, PatientDTO::nom,
+                            PatientDTO::dateNaissance, PatientDTO::genre,
+                            PatientDTO::telephone, PatientDTO::adresse)
                     .containsExactly(1L, "Jean", "Dupont", LocalDate.of(1980, 5, 12),
                             Genre.M, "0102030405", "12 rue des Lilas");
         }
@@ -127,7 +121,7 @@ class PatientServiceTest {
 
             // Assert
             assertThat(result)
-                    .extracting(PatientDTO::getId, PatientDTO::getNom)
+                    .extracting(PatientDTO::id, PatientDTO::nom)
                     .containsExactly(1L, "Dupont");
         }
 
@@ -152,8 +146,9 @@ class PatientServiceTest {
         @DisplayName("Should force id to null and persist the new patient")
         void shouldForceIdToNullAndSave() {
             // Arrange
-            PatientDTO input = sampleDto();
-            input.setId(123L);
+            // Payload portant un id : le service doit l'ignorer, la base seule le genere.
+            PatientDTO input = new PatientDTO(123L, "Marie", "Martin", LocalDate.of(1992, 3, 8),
+                    Genre.F, "0605040302", "5 avenue du Parc");
             // On retourne une COPIE avec l'id genere, sans muter l'argument capture
             // (le captor garde la reference : le muter ici fausserait l'assertion sur l'id null).
             when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> {
@@ -179,7 +174,7 @@ class PatientServiceTest {
                     .as("Id transmis dans le payload doit etre ignore")
                     .isNull();
             assertThat(result)
-                    .extracting(PatientDTO::getId, PatientDTO::getNom)
+                    .extracting(PatientDTO::id, PatientDTO::nom)
                     .containsExactly(7L, "Martin");
         }
     }
@@ -202,9 +197,9 @@ class PatientServiceTest {
 
             // Assert
             assertThat(result)
-                    .extracting(PatientDTO::getId, PatientDTO::getPrenom, PatientDTO::getNom,
-                            PatientDTO::getDateNaissance, PatientDTO::getGenre,
-                            PatientDTO::getTelephone, PatientDTO::getAdresse)
+                    .extracting(PatientDTO::id, PatientDTO::prenom, PatientDTO::nom,
+                            PatientDTO::dateNaissance, PatientDTO::genre,
+                            PatientDTO::telephone, PatientDTO::adresse)
                     .containsExactly(1L, "Marie", "Martin", LocalDate.of(1992, 3, 8),
                             Genre.F, "0605040302", "5 avenue du Parc");
             verify(patientRepository).save(existingPatient);
