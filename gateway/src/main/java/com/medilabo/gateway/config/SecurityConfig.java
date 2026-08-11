@@ -30,7 +30,7 @@ public class SecurityConfig {
      * donc aucun contexte de securite n'est conserve cote serveur.
      */
     @Bean
-    SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 // API stateless sans cookie de session : CSRF non applicable.
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
@@ -57,7 +57,7 @@ public class SecurityConfig {
      * porte ce prefixe ; cet encoder le verifie a chaque requete.
      */
     @Bean
-    PasswordEncoder passwordEncoder() {
+    public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 }

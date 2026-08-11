@@ -14,7 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.mongodb.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -34,6 +34,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @DisplayName("Notes API (end-to-end, real MongoDB)")
 class NotesApplicationE2ETest {
 
+    // Jamais lu par le test : @Container en pilote le cycle de vie et
+    // @ServiceConnection en injecte l'URI, tous deux par reflexion.
+    @SuppressWarnings("unused")
     @Container
     @ServiceConnection
     static MongoDBContainer mongo = new MongoDBContainer("mongo:7");

@@ -8,7 +8,7 @@
     ],
     "settings": {
         "java.configuration.updateBuildConfiguration": "automatic",
-        "java.compile.nullAnalysis.mode": "automatic",
+        "java.compile.nullAnalysis.mode": "disabled",
         "files.exclude": {
             "**/target": true,
             "**/.idea": true,
