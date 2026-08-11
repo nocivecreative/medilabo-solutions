@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.medilabo.notes.dto.NoteDTO;
-import com.medilabo.notes.services.INoteService;
+import com.medilabo.notes.services.NoteService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ public class NoteController {
 
     private static final Logger logger = LoggerFactory.getLogger(NoteController.class);
 
-    private final INoteService noteService;
+    private final NoteService noteService;
 
     /**
      * Historique des notes d'un patient (US « Vue historique du patient »).
@@ -46,13 +46,13 @@ public class NoteController {
      */
     @PostMapping
     public ResponseEntity<NoteDTO> addNote(@Valid @RequestBody NoteDTO dto) {
-        logger.info("[CALL] POST /notes - patId={}", dto.getPatId());
+        logger.info("[CALL] POST /notes - patId={}", dto.patId());
         NoteDTO created = noteService.addNote(dto);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(created.getId())
+                .buildAndExpand(created.id())
                 .toUri();
-        logger.info("[RESPONSE] POST /notes -> id={}", created.getId());
+        logger.info("[RESPONSE] POST /notes -> id={}", created.id());
         return ResponseEntity.created(location).body(created);
     }
 }

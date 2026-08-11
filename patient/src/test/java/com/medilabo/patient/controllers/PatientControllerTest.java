@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +37,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.medilabo.patient.dto.PatientDTO;
 import com.medilabo.patient.exceptions.PatientNotFoundException;
 import com.medilabo.patient.model.Genre;
-import com.medilabo.patient.services.IPatientService;
+import com.medilabo.patient.services.PatientService;
 
 /**
  * Test de tranche web (milieu de pyramide) : seule la couche MVC est chargee,
@@ -55,26 +54,20 @@ class PatientControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private IPatientService patientService;
+    private PatientService patientService;
 
     /** Fabrique statique : utilisable aussi par les @MethodSource des classes @Nested. */
     private static PatientDTO validDto() {
-        return PatientDTO.builder()
-                .id(1L)
-                .prenom("Jean")
-                .nom("Dupont")
-                .dateNaissance(LocalDate.of(1980, 5, 12))
-                .genre(Genre.M)
-                .telephone("0102030405")
-                .adresse("12 rue des Lilas")
-                .build();
+        return dto(1L, "Jean", "Dupont", LocalDate.of(1980, 5, 12), Genre.M);
     }
 
-    /** Un DTO valide auquel on applique une mutation invalidante. */
-    private static PatientDTO invalidatedBy(Consumer<PatientDTO> mutation) {
-        PatientDTO dto = validDto();
-        mutation.accept(dto);
-        return dto;
+    /**
+     * Construit un DTO en ne faisant varier que les champs obligatoires ; telephone
+     * et adresse, facultatifs, gardent une valeur fixe. PatientDTO etant un record,
+     * une variante se construit au lieu de se muter.
+     */
+    private static PatientDTO dto(Long id, String prenom, String nom, LocalDate naissance, Genre genre) {
+        return new PatientDTO(id, prenom, nom, naissance, genre, "0102030405", "12 rue des Lilas");
     }
 
     /**
@@ -82,11 +75,12 @@ class PatientControllerTest {
      * Meme acte et meme assertion pour chacun -> un seul test parametre.
      */
     static Stream<Arguments> invalidPayloads() {
+        LocalDate naissance = LocalDate.of(1980, 5, 12);
         return Stream.of(
-                Arguments.of("prenom absent", invalidatedBy(dto -> dto.setPrenom(null))),
-                Arguments.of("nom vide", invalidatedBy(dto -> dto.setNom(""))),
-                Arguments.of("date de naissance absente", invalidatedBy(dto -> dto.setDateNaissance(null))),
-                Arguments.of("genre absent", invalidatedBy(dto -> dto.setGenre(null))));
+                Arguments.of("prenom absent", dto(1L, null, "Dupont", naissance, Genre.M)),
+                Arguments.of("nom vide", dto(1L, "Jean", "", naissance, Genre.M)),
+                Arguments.of("date de naissance absente", dto(1L, "Jean", "Dupont", null, Genre.M)),
+                Arguments.of("genre absent", dto(1L, "Jean", "Dupont", naissance, null)));
     }
 
     @Nested
@@ -159,7 +153,7 @@ class PatientControllerTest {
             mockMvc.perform(get("/patients/{id}", 99L))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.status").value(404))
-                    .andExpect(jsonPath("$.message")
+                    .andExpect(jsonPath("$.detail")
                             .value("Patient introuvable pour l'identifiant : 99"));
         }
     }
@@ -172,8 +166,8 @@ class PatientControllerTest {
         @DisplayName("Should return 201 with a Location header")
         void shouldCreatePatient() throws Exception {
             // Arrange
-            PatientDTO toCreate = validDto();
-            toCreate.setId(null);
+            // Payload de creation : sans id, celui-ci etant genere par la base.
+            PatientDTO toCreate = dto(null, "Jean", "Dupont", LocalDate.of(1980, 5, 12), Genre.M);
             when(patientService.createPatient(any(PatientDTO.class))).thenReturn(validDto());
 
             // Act & Assert

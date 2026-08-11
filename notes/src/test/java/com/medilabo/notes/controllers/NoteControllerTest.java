@@ -27,7 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import tools.jackson.databind.ObjectMapper;
 import com.medilabo.notes.dto.NoteDTO;
-import com.medilabo.notes.services.INoteService;
+import com.medilabo.notes.services.NoteService;
 
 /**
  * Test de tranche web (milieu de pyramide) : seule la couche MVC est chargee,
@@ -44,7 +44,7 @@ class NoteControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private INoteService noteService;
+    private NoteService noteService;
 
     @Nested
     @DisplayName("GET /notes/patient/{patId}")
@@ -54,9 +54,8 @@ class NoteControllerTest {
         @DisplayName("Should return 200 with the patient history")
         void shouldReturnHistory() throws Exception {
             // Arrange
-            NoteDTO dto = NoteDTO.builder()
-                    .id("a1").patId(2L).note("stress au travail")
-                    .date(Instant.parse("2026-01-01T10:00:00Z")).build();
+            NoteDTO dto = new NoteDTO("a1", 2L, "stress au travail",
+                    Instant.parse("2026-01-01T10:00:00Z"));
             when(noteService.getNotesByPatId(2L)).thenReturn(List.of(dto));
 
             // Act & Assert
@@ -89,9 +88,8 @@ class NoteControllerTest {
         @DisplayName("Should return 201 with a Location header")
         void shouldAddNote() throws Exception {
             // Arrange
-            NoteDTO input = NoteDTO.builder().patId(2L).note("nouvelle observation").build();
-            NoteDTO saved = NoteDTO.builder()
-                    .id("gen1").patId(2L).note("nouvelle observation").date(Instant.now()).build();
+            NoteDTO input = new NoteDTO(null, 2L, "nouvelle observation", null);
+            NoteDTO saved = new NoteDTO("gen1", 2L, "nouvelle observation", Instant.now());
             when(noteService.addNote(any(NoteDTO.class))).thenReturn(saved);
 
             // Act & Assert
@@ -109,9 +107,9 @@ class NoteControllerTest {
          */
         static Stream<Arguments> invalidPayloads() {
             return Stream.of(
-                    Arguments.of("patId manquant", NoteDTO.builder().note("orpheline").build()),
-                    Arguments.of("note vide", NoteDTO.builder().patId(2L).note("  ").build()),
-                    Arguments.of("note absente", NoteDTO.builder().patId(2L).build()));
+                    Arguments.of("patId manquant", new NoteDTO(null, null, "orpheline", null)),
+                    Arguments.of("note vide", new NoteDTO(null, 2L, "  ", null)),
+                    Arguments.of("note absente", new NoteDTO(null, 2L, null, null)));
         }
 
         @ParameterizedTest(name = "{0}")

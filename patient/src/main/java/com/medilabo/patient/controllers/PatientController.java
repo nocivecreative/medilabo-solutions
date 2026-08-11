@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.medilabo.patient.dto.PatientDTO;
-import com.medilabo.patient.services.IPatientService;
+import com.medilabo.patient.services.PatientService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class PatientController {
 
     private static final Logger logger = LoggerFactory.getLogger(PatientController.class);
 
-    private final IPatientService patientService;
+    private final PatientService patientService;
 
     /**
      * Liste paginée des patients.
@@ -58,7 +58,9 @@ public class PatientController {
     @GetMapping("/{id}")
     public ResponseEntity<PatientDTO> getPatientById(@PathVariable Long id) {
         logger.info("[CALL] GET /patients/{}", id);
-        return ResponseEntity.ok(patientService.getPatientById(id));
+        PatientDTO patient = patientService.getPatientById(id);
+        logger.info("[RESPONSE] GET /patients/{} -> OK", id);
+        return ResponseEntity.ok(patient);
     }
 
     /**
@@ -66,13 +68,15 @@ public class PatientController {
      */
     @PostMapping
     public ResponseEntity<PatientDTO> createPatient(@Valid @RequestBody PatientDTO dto) {
-        logger.info("[CALL] POST /patients - {} {}", dto.getPrenom(), dto.getNom());
+        // Pas de nom ni prenom dans les logs : donnee identifiante. L'id genere,
+        // journalise en reponse, suffit a tracer la creation.
+        logger.info("[CALL] POST /patients");
         PatientDTO created = patientService.createPatient(dto);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(created.getId())
+                .buildAndExpand(created.id())
                 .toUri();
-        logger.info("[RESPONSE] POST /patients -> id={}", created.getId());
+        logger.info("[RESPONSE] POST /patients -> id={}", created.id());
         return ResponseEntity.created(location).body(created);
     }
 

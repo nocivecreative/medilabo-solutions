@@ -1,42 +1,34 @@
 package com.medilabo.patient.exceptions;
 
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Normalise les erreurs de l'API au format {@link ProblemDetail} (RFC 9457).
+ *
+ * <p>Format standard plutot qu'un corps maison : Spring renseigne {@code status},
+ * {@code title} et {@code instance} (le chemin en echec) ; il ne reste qu'a fournir
+ * le {@code detail}. Les champs specifiques a l'application passent par
+ * {@code setProperty}.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(PatientNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(PatientNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(HttpStatus.NOT_FOUND, ex.getMessage(), null));
+    public ProblemDetail handleNotFound(PatientNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-        List<String> errors = ex.getBindingResult().getFieldErrors().stream()
+    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Validation échouée");
+        problem.setProperty("errors", ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> fe.getField() + " : " + fe.getDefaultMessage())
-                .toList();
-        return ResponseEntity.badRequest()
-                .body(body(HttpStatus.BAD_REQUEST, "Validation échouée", errors));
-    }
-
-    private Map<String, Object> body(HttpStatus status, String message, List<String> errors) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", Instant.now());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        if (errors != null) {
-            body.put("errors", errors);
-        }
-        return body;
+                .toList());
+        return problem;
     }
 }

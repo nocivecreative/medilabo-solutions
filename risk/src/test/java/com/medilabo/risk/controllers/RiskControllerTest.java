@@ -21,7 +21,7 @@ import org.springframework.web.client.ResourceAccessException;
 
 import com.medilabo.risk.dto.RiskReportDTO;
 import com.medilabo.risk.model.RiskLevel;
-import com.medilabo.risk.service.IRiskService;
+import com.medilabo.risk.service.RiskService;
 
 /**
  * Test de tranche web (milieu de pyramide) : seule la couche MVC est chargée,
@@ -35,7 +35,7 @@ class RiskControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private IRiskService riskService;
+    private RiskService riskService;
 
     @Test
     @DisplayName("GET /risk/patient/{id} should return 200 with the risk report")

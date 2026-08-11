@@ -3,7 +3,9 @@ package com.medilabo.risk.service;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -18,21 +20,20 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class RiskService implements IRiskService {
+public class RiskService {
 
     private final PatientClient patientClient;
     private final NoteClient noteClient;
     private final TriggerDetector triggerDetector;
 
-    @Override
     public RiskReportDTO assessRisk(Long patId) {
         PatientView patient = patientClient.getPatient(patId);
         List<NoteView> notes = noteClient.getNotes(patId);
 
         String combinedNotes = notes.stream()
                 .map(NoteView::note)
-                .filter(java.util.Objects::nonNull)
-                .reduce("", (a, b) -> a + " " + b);
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining(" "));
 
         Set<String> triggers = triggerDetector.findDistinctTriggers(combinedNotes);
         int age = ageOf(patient.dateNaissance());
