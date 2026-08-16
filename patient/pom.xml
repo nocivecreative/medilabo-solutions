@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.medilabo</groupId>
     <artifactId>patient</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.3.0</version>
     <name>patient</name>
     <description/>
     <url/>
@@ -183,6 +183,28 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Documentation technique : javadoc HTML dans target/reports/apidocs.
+                 Generee A LA DEMANDE (`mvn javadoc:javadoc`), volontairement PAS
+                 attachee a `package` : le build Docker lance `mvnw -DskipTests package`,
+                 l'y accrocher alourdirait chaque construction d'image sans contrepartie. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.12.0</version>
+                <configuration>
+                    <!-- Verifie AUSSI les commentaires deja presents (balise manquante,
+                         lien casse, HTML invalide) : la presence d'un bloc ne prouve rien. -->
+                    <doclint>all</doclint>
+                    <!-- Les commentaires sont accentues : sans ces trois reglages la sortie
+                         suit l'encodage de la plateforme et les pages deviennent illisibles. -->
+                    <encoding>UTF-8</encoding>
+                    <docencoding>UTF-8</docencoding>
+                    <charset>UTF-8</charset>
+                    <!-- Pas d'horodatage par page : a code inchange, deux generations
+                         successives produisent une sortie identique. -->
+                    <notimestamp>true</notimestamp>
+                </configuration>
             </plugin>
         </plugins>
     </build>
