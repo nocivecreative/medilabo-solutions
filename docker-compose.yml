@@ -26,8 +26,12 @@ services:
             # Le second schema (medilabo_auth) est cree + grante par les scripts d'init.
             MYSQL_DATABASE: medilabo_patient
             MYSQL_USER: medilabo
-            MYSQL_PASSWORD: ${DB_PASSWORD}
-            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+            # `:?` = garde fail-fast. Sans elle, une variable absente s'interpole en chaine
+            # VIDE : MySQL se cree un utilisateur sans mot de passe et les services partent
+            # avec un secret vide -> "Access denied (using password: NO)" a l'execution,
+            # loin de la vraie cause. Ici, compose refuse de demarrer et dit quoi faire.
+            MYSQL_PASSWORD: '${DB_PASSWORD:?copiez .env.example en .env}'
+            MYSQL_ROOT_PASSWORD: '${DB_ROOT_PASSWORD:?copiez .env.example en .env}'
         ports:
             # Expose en 3307 cote hote : permet de valider patient/gateway lances en LOCAL
             # (profil `local`, qui pointe deja sur localhost:3307) contre la base conteneurisee.
@@ -39,9 +43,28 @@ services:
         networks:
             - medilabo-net
         healthcheck:
-            # Sert au `depends_on: condition: service_healthy` des futurs services applicatifs :
-            # ils n'attendront pas que le conteneur demarre, mais que MySQL accepte les connexions.
-            test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
+            # Sert au `depends_on: condition: service_healthy` des services applicatifs : ils
+            # n'attendront pas que le conteneur demarre, mais que la base soit VRAIMENT utilisable.
+            #
+            # Session SQL authentifiee, et NON `mysqladmin ping` : ping sort en code 0 meme sur
+            # "Access denied" (recevoir un refus prouve que le serveur repond). Sonde de vivacite
+            # correcte, mais trop faible ici -> mysql passait `healthy` avec des identifiants
+            # invalides, patient demarrait, et l'echec surgissait sur patient. Symptome deplace.
+            #
+            # -h 127.0.0.1 force TCP la ou `localhost` passerait par le socket Unix : pendant
+            # l'init, MySQL sert un serveur temporaire SANS ecoute reseau, donc la sonde socket
+            # peut reussir alors que db/init/*.sql tourne encore. En TCP, pas de faux positif.
+            #
+            # MYSQL_PWD + `$$` : le `$$` echappe le `$` pour que le shell DU CONTENEUR resolve la
+            # variable a l'execution. Sans lui, compose interpole et fige le secret en clair dans
+            # `docker inspect` (OWASP A05). MYSQL_PWD evite en prime le warning "using a password
+            # on the command line" a chaque sonde. Utilisateur/schema repris des variables
+            # ci-dessus : on valide l'acces dont patient a reellement besoin, sans valeur en dur.
+            test:
+                [
+                    'CMD-SHELL',
+                    'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$$MYSQL_USER" -D "$$MYSQL_DATABASE" -e "SELECT 1" > /dev/null || exit 1',
+                ]
             interval: 30s
             timeout: 5s
             retries: 3
@@ -89,7 +112,9 @@ services:
             # Active le profil docker (datasource vers le service `mysql`, pas localhost).
             SPRING_PROFILES_ACTIVE: docker
             # Cablage du secret : meme valeur que DB_PASSWORD, sous le nom attendu par l'app.
-            SPRING_MEDILABO_PATIENT_DB_PASSWORD: ${DB_PASSWORD}
+            # `:?` : la garde est repetee a CHAQUE point d'injection, pour qu'aucun service
+            # ne puisse recevoir un secret vide si le service mysql evolue ou disparait.
+            SPRING_MEDILABO_PATIENT_DB_PASSWORD: '${DB_PASSWORD:?vérifiez le contenu du .env}'
         depends_on:
             mysql:
                 # N'attend pas que le conteneur demarre, mais que MySQL accepte les connexions.
@@ -182,7 +207,7 @@ services:
             # sslMode=PREFERRED : le driver R2DBC io.asyncer exige TLS pour le handshake
             # caching_sha2_password (pas de allowPublicKeyRetrieval cote R2DBC) -> TLS = seule voie.
             AUTH_DB_URL: r2dbc:mysql://mysql:3306/medilabo_auth?sslMode=PREFERRED
-            SPRING_MEDILABO_AUTH_DB_PASSWORD: ${DB_PASSWORD}
+            SPRING_MEDILABO_AUTH_DB_PASSWORD: '${DB_PASSWORD:?copiez .env.example en .env}'
             # Routage interne vers les services metier (nom de service + port interne).
             PATIENT_SERVICE_URI: http://patient:8081
             NOTES_SERVICE_URI: http://notes:8082
