@@ -173,10 +173,11 @@ L'application manipule des données de santé : le traitement de ces données a 
 
     ```bash
     cd patient && ./mvnw javadoc:javadoc     # puis idem dans notes/, risk/, gateway/
+    # PowerShell : cd patient; .\mvnw.cmd javadoc:javadoc
     # Sortie : target/reports/apidocs/index.html
     ```
 
-    `maven-javadoc-plugin` est configuré dans les 4 `pom.xml` avec `doclint=all` — une balise `@param` manquante, un `{@link}` cassé ou du HTML invalide sont signalés à la génération. Il n'est **pas** accroché à la phase `package` : le build des images Docker (`mvnw -DskipTests package`) n'a pas à produire une documentation qu'il jetterait aussitôt. La sortie vit dans `target/`, donc non versionnée : elle se régénère, elle ne se commite pas.
+    `maven-javadoc-plugin` est configuré dans les 4 `pom.xml` avec `doclint=all` — une balise `@param` manquante, un `{@link}` cassé ou du HTML invalide sont signalés à la génération. Il n'est **pas** accroché à la phase `package` : le build des images Docker (`./mvnw -DskipTests package`) n'a pas à produire une documentation qu'il jetterait aussitôt. La sortie vit dans `target/`, donc non versionnée : elle se régénère, elle ne se commite pas.
 
 - **Diagrammes Mermaid** :
     - [`docs/diagrams/architecture-cible.mmd`](docs/diagrams/architecture-cible.mmd) — vue microservices + flux REST
