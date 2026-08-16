@@ -55,6 +55,27 @@ Le système n'est pas destiné au grand public ni aux patients eux-mêmes — l'
 - **Git**
 - **Node.js 20+** + **npm** _(uniquement pour développer le frontend hors conteneur — le build Docker l'embarque)_
 
+### Configuration des secrets (obligatoire au premier lancement)
+
+Les mots de passe ne sont pas versionnés — `.env` est ignoré par Git. Il n'arrive donc **pas** avec le clone : créez-le à partir du template avant tout démarrage.
+
+```bash
+cp .env.example .env          # PowerShell : Copy-Item .env.example .env
+```
+
+Renseignez-y `DB_PASSWORD` (utilisateur applicatif `medilabo`) et `DB_ROOT_PASSWORD`. Sans ce fichier, `docker compose` s'arrête immédiatement sur `required variable DB_PASSWORD is missing a value`.
+
+> ⚠️ `DB_PASSWORD` n'est appliqué qu'à la **première** initialisation du volume MySQL. Le modifier ensuite n'a aucun effet sur un volume existant : il faut repartir d'un volume vierge via `docker compose down -v` — ce qui **détruit les données** MySQL et Mongo, et rejoue `db/init/` et `db/mongo-init/`.
+
+Pour lancer un service **hors Docker** (profil `local`, ci-dessous), le secret n'est pas lu dans `.env` mais dans une variable d'environnement du poste — un conteneur n'hérite jamais de l'environnement de l'hôte, et inversement :
+
+| Service           | Variable d'environnement                |
+| ----------------- | --------------------------------------- |
+| `patient`         | `SPRING_MEDILABO_PATIENT_DB_PASSWORD`   |
+| `gateway`         | `SPRING_MEDILABO_AUTH_DB_PASSWORD`      |
+
+Renseignez-les avec la même valeur que `DB_PASSWORD`.
+
 ### Démarrage d'un service en isolation (dev)
 
 ```bash
