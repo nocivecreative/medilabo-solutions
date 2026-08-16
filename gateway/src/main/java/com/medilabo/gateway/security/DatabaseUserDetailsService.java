@@ -26,6 +26,21 @@ public class DatabaseUserDetailsService implements ReactiveUserDetailsService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Charge un utilisateur et le convertit au format attendu par Spring Security.
+     *
+     * <p>Le mot de passe est transmis tel qu'il est stocke, sous forme de hash
+     * prefixe par son algorithme : c'est le {@code PasswordEncoder} de la chaine
+     * de securite qui le confronte a celui de la requete, jamais cette methode.
+     *
+     * <p>L'autorite {@code ROLE_USER} est posee en dur pour tous : le besoin
+     * client ne prevoit aucune gestion fine de droits.
+     *
+     * @param username identifiant de connexion recherche
+     * @return l'utilisateur au format Spring Security, ou un {@link Mono} vide si
+     *         l'identifiant est inconnu ; un compte desactive est renvoye mais
+     *         marque comme tel, et l'authentification echoue en aval
+     */
     @Override
     public Mono<UserDetails> findByUsername(String username) {
         return userRepository.findByUsername(username)

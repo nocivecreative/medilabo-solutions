@@ -12,5 +12,17 @@ import reactor.core.publisher.Mono;
  */
 public interface AppUserRepository extends ReactiveCrudRepository<AppUser, Long> {
 
+    /**
+     * Recherche un utilisateur par son identifiant de connexion.
+     *
+     * <p>La colonne porte une contrainte d'unicite, ce qui garantit un resultat
+     * au plus. Appelee a chaque requete authentifiee, Basic Auth ne conservant
+     * aucune session cote serveur.
+     *
+     * @param username identifiant saisi par le praticien
+     * @return l'utilisateur correspondant, ou un {@link Mono} vide si aucun ne
+     *         porte cet identifiant — l'authentification echoue alors sans que
+     *         la reponse distingue un compte inexistant d'un mot de passe faux
+     */
     Mono<AppUser> findByUsername(String username);
 }

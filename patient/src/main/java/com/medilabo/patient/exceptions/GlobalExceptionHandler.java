@@ -17,11 +17,30 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Traduit un patient introuvable en {@code 404 Not Found}.
+     *
+     * @param ex exception levée par la couche service ; son message, qui ne cite
+     *           que l'identifiant cherché, alimente le {@code detail}
+     * @return le corps d'erreur normalisé, sérialisé en {@code application/problem+json}
+     */
     @ExceptionHandler(PatientNotFoundException.class)
     public ProblemDetail handleNotFound(PatientNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    /**
+     * Traduit un payload invalide en {@code 400 Bad Request}.
+     *
+     * <p>Les violations sont aplaties dans une propriété {@code errors} sous la
+     * forme {@code champ : message}, pour que le client puisse afficher l'erreur
+     * au bon endroit du formulaire plutôt qu'un message global. Le message vient
+     * des contraintes déclarées sur {@code PatientDTO}.
+     *
+     * @param ex exception de validation levée par {@code @Valid} avant l'entrée
+     *           dans le contrôleur
+     * @return le corps d'erreur normalisé, enrichi de la liste des champs en échec
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(

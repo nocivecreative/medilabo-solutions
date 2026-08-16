@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 
 import com.medilabo.risk.client.NoteClient;
 import com.medilabo.risk.client.PatientClient;
@@ -18,6 +19,20 @@ import com.medilabo.risk.model.RiskLevel;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Évalue le niveau de risque de diabète d'un patient.
+ *
+ * <p>Seul service de la stack à ne détenir aucune donnée : il ne possède ni base
+ * ni schéma, et reconstruit son rapport à chaque appel en interrogeant le
+ * patient-service et le notes-service. Rien n'est mis en cache ni recopié
+ * localement — un rapport reflète donc toujours l'état courant des deux sources,
+ * et aucune donnée de santé ne se retrouve dupliquée dans un troisième magasin.
+ *
+ * <p>Le calcul se fait en trois temps, répartis entre trois collaborateurs :
+ * {@link TriggerDetector} compte les termes déclencheurs distincts du texte des
+ * notes, {@code ageOf} déduit l'âge de la date de naissance, et {@code evaluate}
+ * croise âge, genre et nombre de déclencheurs pour produire le niveau.
+ */
 @Service
 @RequiredArgsConstructor
 public class RiskService {
@@ -26,6 +41,26 @@ public class RiskService {
     private final NoteClient noteClient;
     private final TriggerDetector triggerDetector;
 
+    /**
+     * Produit le rapport de risque d'un patient.
+     *
+     * <p>Les notes sont concaténées en un seul texte avant analyse, et non
+     * examinées une à une : le comptage porte sur les déclencheurs distincts de
+     * l'historique complet, de sorte qu'un terme répété dans plusieurs notes ne
+     * compte qu'une fois. Les notes au contenu absent sont écartées de cette
+     * concaténation.
+     *
+     * <p>Les deux appels amont sont séquentiels et bloquants. Un patient sans
+     * aucune note donne un rapport valide à zéro déclencheur, pas une erreur.
+     *
+     * @param patId identifiant du patient à évaluer
+     * @return le rapport : niveau de risque, âge, nombre de déclencheurs et
+     *         liste des termes trouvés, dans l'ordre de la configuration
+     * @throws RestClientException si un service amont est injoignable ou répond
+     *                             en erreur — notamment lorsque l'identifiant est
+     *                             inconnu du patient-service, dont le {@code 404}
+     *                             est propagé
+     */
     public RiskReportDTO assessRisk(Long patId) {
         PatientView patient = patientClient.getPatient(patId);
         List<NoteView> notes = noteClient.getNotes(patId);

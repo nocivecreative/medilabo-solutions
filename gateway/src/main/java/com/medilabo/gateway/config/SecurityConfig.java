@@ -28,6 +28,10 @@ public class SecurityConfig {
      * Chaine de filtres reactive : tout est protege sauf la sonde de sante.
      * Basic Auth est stateless par nature (credentials renvoyes a chaque requete),
      * donc aucun contexte de securite n'est conserve cote serveur.
+     *
+     * @param http constructeur de la chaine, fourni par Spring Security
+     * @return la chaine appliquee a toutes les requetes traversant la gateway,
+     *         y compris celles routees vers les services metier
      */
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -55,6 +59,9 @@ public class SecurityConfig {
      * ({bcrypt}...) pour permettre une migration d'algorithme sans casser
      * les hash existants. Le hash stocke en base (cf. 02_insert_app_user.sql)
      * porte ce prefixe ; cet encoder le verifie a chaque requete.
+     *
+     * @return un encoder delegant, capable de verifier plusieurs algorithmes en
+     *         se fiant au prefixe du hash stocke, et qui encode en BCrypt
      */
     @Bean
     public PasswordEncoder passwordEncoder() {

@@ -37,6 +37,12 @@ public class TriggerDetector {
     /**
      * Ensemble des termes déclencheurs distincts présents dans le texte fourni.
      * L'ordre d'insertion (= ordre de la config) est préservé pour un rapport lisible.
+     *
+     * @param combinedNotes texte agrégé des notes du patient ; peut être vide, et
+     *                      {@code null} est traité comme vide
+     * @return les termes trouvés, sous leur forme normalisée (minuscules, sans
+     *         accents) et non sous leur graphie d'origine dans les notes ;
+     *         ensemble vide si aucun terme ne correspond
      */
     public Set<String> findDistinctTriggers(String combinedNotes) {
         String haystack = normalize(combinedNotes);
