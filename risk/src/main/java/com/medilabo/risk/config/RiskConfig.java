@@ -16,6 +16,16 @@ import org.springframework.web.client.RestClient;
 @EnableConfigurationProperties(RiskProperties.class)
 public class RiskConfig {
 
+    /**
+     * Fournit le constructeur de clients HTTP partagé par {@code PatientClient} et
+     * {@code NoteClient}.
+     *
+     * <p>Un {@code Builder} et non un {@code RestClient} déjà construit : chaque
+     * client vise un service amont différent et pose sa propre {@code baseUrl}
+     * depuis {@link RiskProperties}.
+     *
+     * @return un constructeur neuf, sans URL de base ni intercepteur préconfiguré
+     */
     @Bean
     public RestClient.Builder restClientBuilder() {
         return RestClient.builder();

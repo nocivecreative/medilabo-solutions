@@ -22,7 +22,19 @@ public class PatientClient {
         this.restClient = builder.baseUrl(properties.getPatientServiceUri()).build();
     }
 
-    /** Récupère le patient ; propage un 404 si l'identifiant est inconnu. */
+    /**
+     * Récupère les données démographiques d'un patient.
+     *
+     * <p>Seuls la date de naissance et le genre sont exploités par le calcul de
+     * risque : {@link PatientView} ne déclare que ces champs, le reste de la
+     * réponse est ignoré à la désérialisation.
+     *
+     * @param patId identifiant du patient
+     * @return la vue démographique du patient
+     * @throws org.springframework.web.client.RestClientException si le
+     *         patient-service est injoignable ou répond en erreur ; un
+     *         identifiant inconnu donne un {@code 404}, propagé tel quel
+     */
     public PatientView getPatient(Long patId) {
         return restClient.get()
                 .uri("/patients/{id}", patId)
