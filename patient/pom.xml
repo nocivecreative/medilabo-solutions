@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.medilabo</groupId>
     <artifactId>patient</artifactId>
-    <version>0.3.0</version>
+    <version>1.0.0</version>
     <name>patient</name>
     <description/>
     <url/>
