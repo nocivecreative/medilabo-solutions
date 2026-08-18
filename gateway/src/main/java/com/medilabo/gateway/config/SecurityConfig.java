@@ -57,8 +57,9 @@ public class SecurityConfig {
     /**
      * Encode/verifie les mots de passe. BCrypt par defaut, avec prefixe d'algo
      * ({bcrypt}...) pour permettre une migration d'algorithme sans casser
-     * les hash existants. Le hash stocke en base (cf. 02_insert_app_user.sql)
-     * porte ce prefixe ; cet encoder le verifie a chaque requete.
+     * les hash existants. Le hash stocke en base (cf. db/init/21_auth_seed.sql,
+     * a la racine du monorepo) porte ce prefixe ; cet encoder le verifie a
+     * chaque requete.
      *
      * @return un encoder delegant, capable de verifier plusieurs algorithmes en
      *         se fiant au prefixe du hash stocke, et qui encode en BCrypt
