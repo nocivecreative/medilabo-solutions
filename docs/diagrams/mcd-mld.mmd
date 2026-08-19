@@ -1,22 +1,43 @@
+%% Thème verrouillé en CLAIR (cf. architecture-cible.mmd pour le raisonnement).
+%% Spécifique à l'erDiagram : `attributeBackgroundColorOdd` / `-Even` colorent les lignes
+%% d'attributs en alternance. Non figées, elles suivent le thème du lecteur et deviennent
+%% sombres, alors que le texte reste calculé pour un fond clair.
+%%{init: {"theme":"base","themeVariables":{"darkMode":false,"background":"#ffffff","mainBkg":"#f5f5f5","primaryColor":"#f5f5f5","primaryBorderColor":"#9e9e9e","primaryTextColor":"#212121","nodeBorder":"#9e9e9e","secondaryColor":"#eeeeee","tertiaryColor":"#fafafa","textColor":"#212121","nodeTextColor":"#212121","titleColor":"#212121","lineColor":"#546e7a","edgeLabelBackground":"#ffffff","attributeBackgroundColorOdd":"#ffffff","attributeBackgroundColorEven":"#f2f2f2","fontFamily":"trebuchet ms, verdana, arial, sans-serif","fontSize":"16px"}}}%%
+
 erDiagram
 
-    PATIENT       ||--o{ NOTE          : "possède (lien logique cross-DB)"
+    PATIENT ||--o{ NOTE : "possède (lien logique cross-base, porté par patId)"
 
+    %% MySQL, schéma `medilabo_patient` — patient-service (JPA, ddl-auto=validate :
+    %% ces colonnes doivent rester alignées sur db/init/10_patient_table.sql).
     PATIENT {
-        bigint       id              PK "auto-incrément"
-        varchar(100)  prenom            "NOT NULL"
-        varchar(100)  nom               "NOT NULL"
-        date         date_naissance    "NOT NULL"
-        char(1)      genre             "NOT NULL — M ou F"
-        varchar(20)  telephone         "nullable"
-        varchar(255) adresse           "nullable"
+        bigint       id              PK "AUTO_INCREMENT"
+        varchar(100) prenom             "NOT NULL"
+        varchar(100) nom                "NOT NULL"
+        date         date_naissance     "NOT NULL"
+        enum         genre              "NOT NULL — valeurs M ou F"
+        varchar(20)  telephone          "NULL"
+        varchar(255) adresse            "NULL"
     }
 
+    %% MongoDB, base `medilabo_notes`, collection `notes` — notes-service.
+    %% Document sans schéma imposé par le SGBD : les champs listés sont ceux
+    %% réellement écrits par Spring Data Mongo et par db/mongo-init.
     NOTE {
-        ObjectId  _id                 PK "id Mongo"
-        bigint    patient_id            "ref PATIENT.id (SQL) — index"
-        varchar   praticien             "auteur de la note"
-        datetime  date_note             "horodatage observation"
-        text      contenu               "texte libre, peu structuré"
-        string[]  termes_detectes       "cache des déclencheurs (optionnel)"
+        ObjectId _id     PK "généré par Mongo, mappé en String côté entité"
+        long     patId      "réf. PATIENT.id — autre SGBD, aucune FK possible — indexé"
+        string   note       "texte libre de l'observation praticien"
+        date     date       "horodatage de création (ISODate / Instant)"
+        string   _class     "discriminateur de type écrit par Spring Data Mongo"
+    }
+
+    %% MySQL, schéma `medilabo_auth` — gateway (Spring Data R2DBC, non bloquant).
+    %% Aucune relation avec PATIENT : un compte de connexion n'est pas un acteur du
+    %% dossier médical. Schéma séparé pour que sauvegarder ou restaurer les
+    %% identifiants ne touche jamais aux données de santé.
+    APP_USER {
+        bigint       id        PK "AUTO_INCREMENT"
+        varchar(100) username     "NOT NULL — UNIQUE (uk_app_user_username)"
+        varchar(100) password     "NOT NULL — hash BCrypt, jamais de clair"
+        boolean      enabled      "NOT NULL — DEFAULT TRUE"
     }
